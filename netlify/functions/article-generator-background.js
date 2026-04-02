@@ -45,7 +45,7 @@ export default async function handler(req, context) {
             console.log('NewsAPI fetch failed during background generation:', e.message);
         }
 
-        const ARTICLE_PROMPT = `You are an elite, veteran feature journalist writing for "THE SIGNAL," a prestigious digital magazine known for deep, analytical, and highly human writing. Your goal is to write a feature that is indistinguishable from a top-tier human writer at The Atlantic or Bloomberg Businessweek. 
+        const ARTICLE_PROMPT = `You are an elite, veteran feature journalist writing for "DailyAI," a prestigious digital magazine known for deep, analytical, and highly human writing. Your goal is to write a feature that is indistinguishable from a top-tier human writer at The Atlantic or Bloomberg Businessweek. 
 
         TASK: Write a comprehensive 1000-1500 word feature article about: "${topic}".
         

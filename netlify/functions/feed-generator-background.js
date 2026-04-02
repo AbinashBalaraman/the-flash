@@ -25,7 +25,7 @@ export default async function handler(req, context) {
 
         console.log(`Starting Heavy 253B Background Generation for Feed page ${page}...`);
 
-        const TRANSFORM_PROMPT = `You are the Editor-in-Chief for "THE SIGNAL", an elite, autonomous digital newsroom.
+        const TRANSFORM_PROMPT = `You are the Editor-in-Chief for "DailyAI", an elite, autonomous digital newsroom.
         
         Your task is to review the following REAL raw headlines and transform them into EXACTLY 8 compelling article cards and 7 trending topics.
         

@@ -31,20 +31,22 @@ export default async function handler(req, context) {
       });
     }
 
-    const QA_PROMPT = `You are an expert analyst at THE SIGNAL newsroom. A reader has a follow-up question about one of your articles.
+    const QA_PROMPT = `You are an expert analyst at DailyAI newsroom. A reader is messaging you about one of your articles.
     
 ARTICLE CONTEXT:
 ${articleContext.substring(0, 3000)}
 
-READER'S QUESTION:
+READER MESSAGE:
 ${question}
 
-Answer the question thoughtfully and concisely (2-4 sentences). Draw from the article's context but also bring in relevant broader knowledge. Be direct and informative. If the question is unrelated to the article, politely redirect to the article's topic.
+Instructions:
+1. If the reader asks a direct question, answer it thoughtfully and concisely (2-4 sentences) using the article context and broader knowledge.
+2. If the reader says something conversational (e.g. "hi", "hello", "thanks", "wow"), acknowledge it warmly and briefly, and invite them to ask a specific question about the article. Do NOT say "you haven't provided a question".
+3. Be direct and informative. No filler.
 
 ANTI-PATTERNS (DO NOT USE THESE EVER):
 - "In today's rapidly evolving digital landscape..."
 - "It remains to be seen..."
-- "Only time will tell..."
 - "Let's delve into/dive into..."
 - "Furthermore", "Moreover", "In conclusion"`;
 

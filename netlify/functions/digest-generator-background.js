@@ -20,7 +20,7 @@ export default async function handler(req, context) {
             day: 'numeric',
         });
 
-        const DIGEST_PROMPT = `You are the digest editor at "THE SIGNAL", an AI-native newsroom. Create today's Daily Digest - a 60-second briefing on the 5 most important cultural and trend stories.
+        const DIGEST_PROMPT = `You are the digest editor at "DailyAI", an AI-native newsroom. Create today's Daily Digest - a 60-second briefing on the 5 most important cultural and trend stories.
         Date: ${today}
         
         For each of the 5 stories, provide:

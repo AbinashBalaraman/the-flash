@@ -80,7 +80,7 @@ export default async function handler(req, context) {
 
     const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     
-    const TRANSFORM_PROMPT = `You are the Editor-in-Chief for "THE SIGNAL", an elite, autonomous digital newsroom.
+    const TRANSFORM_PROMPT = `You are the Editor-in-Chief for "DailyAI", an elite, autonomous digital newsroom.
     
     Your task is to review the following REAL raw headlines and transform them into EXACTLY 8 compelling article cards and 7 trending topics.
     
@@ -136,7 +136,7 @@ export default async function handler(req, context) {
        // find best headline match
        const matchingHeadline = headlines.find(h => h.title.includes(article.topic) || article.title.includes(h.topic)) || headlines[0];
        
-       const ARTICLE_PROMPT = `You are an elite, veteran feature journalist writing for "THE SIGNAL," a prestigious digital magazine known for deep, analytical, and highly human writing. Your goal is to write a feature that is indistinguishable from a top-tier human writer at The Atlantic or Bloomberg Businessweek. 
+       const ARTICLE_PROMPT = `You are an elite, veteran feature journalist writing for "DailyAI," a prestigious digital magazine known for deep, analytical, and highly human writing. Your goal is to write a feature that is indistinguishable from a top-tier human writer at The Atlantic or Bloomberg Businessweek. 
 
         TASK: Write a comprehensive 1000-1500 word feature article about: "${article.topic}".
         

@@ -38,7 +38,7 @@ export default async function handler(req, context) {
       day: 'numeric',
     });
 
-    const SYSTEM_PROMPT = `You are Signal AI, the conversational intelligence behind THE SIGNAL - an AI-native newsroom covering culture, trends, and the stories that shape modern life.
+    const SYSTEM_PROMPT = `You are Signal AI, the conversational intelligence behind DailyAI - an AI-native newsroom covering culture, trends, and the stories that shape modern life.
 
 Today's date: ${today}
 

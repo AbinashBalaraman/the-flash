@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════
    APP.JS — Main application entry point
-   THE SIGNAL — AI-Native Newsroom
+   DailyAI — AI-Native Newsroom
    ═══════════════════════════════════════════════════════ */
 
 import { fetchFeed, fetchArticle, fetchDigest, askQuestion, sendChatMessage } from './services/api.js';
@@ -83,6 +83,12 @@ async function loadFeed(force = false) {
     
     if (validArticles.length > 0 && loadMoreContainer) {
       loadMoreContainer.style.display = 'block';
+    }
+
+    if (data.isGenerating) {
+      setTimeout(() => {
+        if (getState().currentPage === 'feed') loadFeed(true);
+      }, 5000);
     }
   } catch (err) {
     renderFeedError(err.message);
@@ -233,6 +239,14 @@ async function loadArticle(slug, force = false) {
     const data = await fetchArticle(slug, force);
     setState({ currentArticle: data });
     renderArticle(data);
+
+    if (data.isGenerating) {
+      setTimeout(() => {
+        if (getState().currentPage === 'article' && window.location.hash.includes(slug)) {
+          loadArticle(slug, true);
+        }
+      }, 5000);
+    }
   } catch (err) {
     content.innerHTML = `
       <div style="text-align: center; padding: 4rem 2rem; color: var(--text-muted);">
@@ -273,6 +287,12 @@ async function loadDigest(force = false) {
     const data = await fetchDigest(force);
     setState({ digest: data });
     renderDigest(data);
+
+    if (data.isGenerating) {
+      setTimeout(() => {
+        if (getState().currentPage === 'digest') loadDigest(true);
+      }, 5000);
+    }
   } catch (err) {
     const stories = document.getElementById('digest-stories');
     const skeleton = document.getElementById('digest-skeleton');
