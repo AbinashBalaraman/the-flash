@@ -3,7 +3,7 @@
 // Shims the Gemini SDK interface → routes to NVIDIA NIM
 // ═══════════════════════════════════════════════════════
 
-const NVIDIA_KEY = process.env.NVIDIA_API_KEY || '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';
+const NVIDIA_KEY = process.env.NVIDIA_API_KEY;
 const NVIDIA_BASE = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
 const DEFAULT_MODEL = 'nvidia/llama-3.1-nemotron-ultra-253b-v1';
 
