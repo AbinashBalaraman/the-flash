@@ -62,6 +62,7 @@ export default async function handler(req, context) {
 
     // 3. Immedately Return Graceful Data
     const fallbackData = {
+        isGenerating: true,
         date: today,
         stories: [
             {

@@ -155,6 +155,7 @@ export default async function handler(req, context) {
     
     // 3. Fallback Data Structure to return IMMEDIATELY to prevent hanging
     const fallbackData = {
+        isGenerating: true,
         articles: headlines.slice(0, 8).map(a => ({
          title: a.title || "Latest Market Movements and Technological Breakthroughs",
          slug: (a.title || "latest-news").toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40),

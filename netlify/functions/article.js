@@ -94,12 +94,13 @@ export default async function handler(req, context) {
 
     // Return Fallback Instantly
     const data = {
+       isGenerating: true,
        title: articleContent ? articleContent.title : topic,
        deck: "Real-time coverage from the wire.",
        topic: topic,
        date: today,
        readingTime: 2,
-       body: `<p>${articleContent ? (articleContent.description || 'Live coverage incoming...') : 'Live coverage of this event is ongoing. We are experiencing high traffic, reducing the full AI processing capability temporarily. Check back shortly for the deep dive.'}</p><hr><p><em>Our autonomous 253B-parameter engine is currently in the background generating the full feature article for this story. It will be available shortly upon clicking Force Refresh.</em></p>`
+       body: `<p>${articleContent ? (articleContent.description || 'Live coverage incoming...') : 'Live coverage of this event is ongoing. We are experiencing high traffic, reducing the full AI processing capability temporarily.'}</p><hr><p class="dynamic-ai-tag"><i>Live Analysis Processing...</i></p><p><em>Our autonomous 253B-parameter engine is currently in the background generating the full feature article for this story. It will dynamically load here automatically as soon as it's ready.</em></p>`
     };
 
     return new Response(JSON.stringify(data), {
