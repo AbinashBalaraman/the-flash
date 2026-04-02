@@ -71,7 +71,7 @@ class NVIDIAConfigShim {
                                 'Authorization': `Bearer ${NVIDIA_KEY}`,
                             },
                             body: JSON.stringify(body),
-                            signal: AbortSignal.timeout(9000), // STRICT 9-second timeout for Netlify free tier
+                            signal: AbortSignal.timeout(4500), // STRICT 4.5-second timeout to allow graceful fallback before Netlify's 10s kill
                         });
 
                         if (!response.ok) {
