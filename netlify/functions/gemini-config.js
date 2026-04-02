@@ -39,14 +39,15 @@ class NVIDIAConfigShim {
                     });
                 }
 
-                // Define models priority (253B first as requested, 70B fallback)
-                let primaryModel = modelName || DEFAULT_MODEL;
+                // Use fast 8B model first, then fallback to larger models
+                let primaryModel = modelName || 'meta/llama-3.1-8b-instruct';
                 const FALLBACK_MODELS = [
+                    'meta/llama-3.1-8b-instruct',  // Fastest first
                     primaryModel,
                     'qwen/qwen3-next-80b-a3b-thinking'
                 ];
                 
-                // Remove duplicates in case primaryModel is already the fallback
+                // Remove duplicates
                 const uniqueModels = [...new Set(FALLBACK_MODELS)];
 
                 let lastError = null;
@@ -57,7 +58,7 @@ class NVIDIAConfigShim {
                         messages,
                         temperature: generationConfig?.temperature ?? 0.7,
                         top_p: generationConfig?.topP ?? 1.0,
-                        max_tokens: generationConfig?.maxOutputTokens ?? 4096,
+                        max_tokens: generationConfig?.maxOutputTokens ?? 2048, // Reduced for speed
                     };
 
                     console.log(`[NVIDIA] → ${modelId} | ${messages.length} msgs | ${new Date().toISOString()}`);
@@ -70,7 +71,7 @@ class NVIDIAConfigShim {
                                 'Authorization': `Bearer ${NVIDIA_KEY}`,
                             },
                             body: JSON.stringify(body),
-                            signal: AbortSignal.timeout(9000), // STRICT 9-second timeout for Netlify free tier
+                            signal: AbortSignal.timeout(6000), // 6-second timeout for faster fallback
                         });
 
                         if (!response.ok) {
