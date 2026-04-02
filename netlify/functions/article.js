@@ -81,8 +81,8 @@ export default async function handler(req, context) {
     
     // FIRE AND FORGET Background Process
     try {
-        const bgUrl = new URL('/api/article-generator-background', req.url);
-        fetch(bgUrl.toString(), {
+        const bgUrl = 'https://the-gflash.netlify.app/api/article-generator-background';
+        fetch(bgUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ slug, topic })

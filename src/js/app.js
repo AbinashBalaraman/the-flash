@@ -198,7 +198,7 @@ function renderFeedError(message) {
 // ──────────────────────────────────────────────────────
 // ARTICLE
 // ──────────────────────────────────────────────────────
-async function loadArticle(slug) {
+async function loadArticle(slug, force = false) {
   setLoading('article', true);
   const content = document.getElementById('article-content');
   content.innerHTML = `
@@ -230,7 +230,7 @@ async function loadArticle(slug) {
   setState({ qaHistory: [] });
 
   try {
-    const data = await fetchArticle(slug);
+    const data = await fetchArticle(slug, force);
     setState({ currentArticle: data });
     renderArticle(data);
   } catch (err) {
@@ -267,10 +267,10 @@ function renderArticle(article) {
 // ──────────────────────────────────────────────────────
 // DIGEST
 // ──────────────────────────────────────────────────────
-async function loadDigest() {
+async function loadDigest(force = false) {
   setLoading('digest', true);
   try {
-    const data = await fetchDigest();
+    const data = await fetchDigest(force);
     setState({ digest: data });
     renderDigest(data);
   } catch (err) {
@@ -484,6 +484,24 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         iconSun.style.display = 'none';
         iconMoon.style.display = 'block';
+      }
+    });
+  }
+
+  const forceRefreshBtn = document.getElementById('force-refresh-btn');
+  if (forceRefreshBtn) {
+    forceRefreshBtn.addEventListener('click', () => {
+      const state = getState();
+      if (state.currentPage === 'feed') {
+        loadFeed(true);
+      } else if (state.currentPage === 'digest') {
+        loadDigest(true);
+      } else if (state.currentPage === 'article') {
+        const hash = window.location.hash;
+        if (hash.startsWith('#/article/')) {
+          const slug = decodeURIComponent(hash.replace('#/article/', ''));
+          loadArticle(slug, true);
+        }
       }
     });
   }

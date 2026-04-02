@@ -3,6 +3,7 @@
 // ═══════════════════════════════════════════════════════
 
 import { genAI } from './gemini-config.js';
+import { getStore } from '@netlify/blobs';
 
 export default async function handler(req, context) {
   if (req.method === 'OPTIONS') {
@@ -15,6 +16,7 @@ export default async function handler(req, context) {
     });
   }
 
+  try {
     const url = new URL(req.url);
     const forceRefresh = url.searchParams.has('t');
     const store = getStore("vibeathon-store");
@@ -47,8 +49,8 @@ export default async function handler(req, context) {
 
     // 2. Fire and Forget Background Generation
     try {
-        const bgUrl = new URL('/api/digest-generator-background', req.url);
-        fetch(bgUrl.toString(), {
+        const bgUrl = 'https://the-gflash.netlify.app/api/digest-generator-background';
+        fetch(bgUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({})

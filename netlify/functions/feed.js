@@ -171,8 +171,8 @@ export default async function handler(req, context) {
     
     // 4. FIRE AND FORGET background generator if on Netlify, otherwise return
     try {
-        const bgUrl = new URL('/api/feed-generator-background', req.url);
-        fetch(bgUrl.toString(), {
+        const bgUrl = 'https://the-gflash.netlify.app/api/feed-generator-background';
+        fetch(bgUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ page, headlines: headlines })

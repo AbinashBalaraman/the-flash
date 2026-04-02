@@ -49,8 +49,10 @@ export async function fetchFeed(forceRefresh = false, page = 1) {
 /**
  * Fetch a full article by slug/topic
  */
-export async function fetchArticle(slug) {
-  return apiFetch('article', {
+export async function fetchArticle(slug, forceRefresh = false) {
+  let endpoint = 'article';
+  if (forceRefresh) endpoint += `?t=${Date.now()}`;
+  return apiFetch(endpoint, {
     method: 'POST',
     body: JSON.stringify({ slug }),
   });
@@ -59,8 +61,10 @@ export async function fetchArticle(slug) {
 /**
  * Fetch the daily digest
  */
-export async function fetchDigest() {
-  return apiFetch('digest');
+export async function fetchDigest(forceRefresh = false) {
+  let endpoint = 'digest';
+  if (forceRefresh) endpoint += `?t=${Date.now()}`;
+  return apiFetch(endpoint);
 }
 
 /**
