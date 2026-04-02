@@ -5,13 +5,13 @@
 
 const NVIDIA_KEY = process.env.NVIDIA_API_KEY;
 const NVIDIA_BASE = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-const DEFAULT_MODEL = 'meta/llama-3.1-70b-instruct';
+const DEFAULT_MODEL = 'nvidia/llama-3.1-nemotron-ultra-253b-v1';
 
 /**
  * SHIM: Mimics the GoogleGenerativeAI SDK but uses NVIDIA NIMs
  */
 class NVIDIAConfigShim {
-    getGenerativeModel({ model: modelName, generationConfig, systemInstruction }) {
+    getGenerativeModel({ model: modelName, generationConfig, systemInstruction, isBackground }) {
         const effectiveModel = DEFAULT_MODEL;
 
         return {
@@ -43,8 +43,7 @@ class NVIDIAConfigShim {
                 let primaryModel = modelName || DEFAULT_MODEL;
                 const FALLBACK_MODELS = [
                     primaryModel,
-                    'meta/llama-3.1-70b-instruct',
-                    'meta/llama-3.1-8b-instruct'
+                    'meta/llama-3.1-70b-instruct'
                 ];
                 
                 // Remove duplicates in case primaryModel is already the fallback
@@ -71,7 +70,7 @@ class NVIDIAConfigShim {
                                 'Authorization': `Bearer ${NVIDIA_KEY}`,
                             },
                             body: JSON.stringify(body),
-                            signal: AbortSignal.timeout(4500), // STRICT 4.5-second timeout to allow graceful fallback before Netlify's 10s kill
+                            signal: AbortSignal.timeout(isBackground ? 120000 : 4500), // STRICT 4.5s for Sync UI, 120s for Background
                         });
 
                         if (!response.ok) {

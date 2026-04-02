@@ -15,7 +15,29 @@ export default async function handler(req, context) {
     });
   }
 
-  try {
+    const url = new URL(req.url);
+    const forceRefresh = url.searchParams.has('t');
+    const store = getStore("vibeathon-store");
+    
+    // 1. Check Blob Cache
+    if (!forceRefresh) {
+        try {
+            const cachedDigest = await store.getJSON('digest_latest');
+            if (cachedDigest) {
+                console.log(`Serving digest from Blobs cache instantly.`);
+                return new Response(JSON.stringify(cachedDigest), {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*',
+                        'Cache-Control': 'public, max-age=60',
+                    },
+                });
+            }
+        } catch (blobErr) {
+            console.warn('Blob digest read failed or not initialized locally:', blobErr.message);
+        }
+    }
+
     const today = new Date().toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
@@ -23,48 +45,46 @@ export default async function handler(req, context) {
       day: 'numeric',
     });
 
-    const DIGEST_PROMPT = `You are the digest editor at "THE SIGNAL", an AI-native newsroom. Create today's Daily Digest - a 60-second briefing on the 5 most important cultural and trend stories.
-
-Date: ${today}
-
-For each of the 5 stories, provide:
-1. A compelling headline
-2. A slug (URL-safe)
-3. A 2-3 sentence summary that tells readers WHY this matters, not just WHAT happened
-
-The stories should span different domains: tech, culture, entertainment, business, science/health. Each summary should be insightful enough that it stands alone as useful information.
-
-Respond ONLY with valid JSON:
-{
-  "date": "${today}",
-  "stories": [
-    {
-      "title": "Headline here",
-      "slug": "headline-slug",
-      "summary": "2-3 sentence summary with genuine insight."
+    // 2. Fire and Forget Background Generation
+    try {
+        const bgUrl = new URL('/api/digest-generator-background', req.url);
+        fetch(bgUrl.toString(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        }).catch(err => console.log('Background trigger failed:', err.message));
+        console.log('Fired async background request to /api/digest-generator-background. Returning graceful UI instantly.');
+    } catch(err) {
+        console.log('Could not fire background digest request:', err);
     }
-  ]
-}`;
 
-    const model = genAI.getGenerativeModel({
-      model: 'meta/llama-3.1-70b-instruct',
-      generationConfig: {
-        temperature: 0.85,
-        topP: 0.9,
-        maxOutputTokens: 2048,
-        responseMimeType: 'application/json',
-      },
-    });
+    // 3. Immedately Return Graceful Data
+    const fallbackData = {
+        date: today,
+        stories: [
+            {
+                title: "Live Analysis Processing",
+                slug: "live-analysis",
+                summary: "Our 253B Parameter Editorial AI is currently synthesizing today's global trends. This is a highly complex autonomous function that will return a 60-second briefing shortly."
+            },
+            {
+                title: "Global Markets Update",
+                slug: "global-markets",
+                summary: "Market volatility remains high as algos assess new data points. Deep dive analysis is pending."
+            },
+             {
+                title: "Technology Ethics",
+                slug: "tech-ethics",
+                summary: "The balance between rapid acceleration and safety protocols continues to dominate boardroom discussions."
+            }
+        ]
+    };
 
-    const result = await model.generateContent(DIGEST_PROMPT);
-    const text = result.response.text();
-    const data = JSON.parse(text);
-
-    return new Response(JSON.stringify(data), {
+    return new Response(JSON.stringify(fallbackData), {
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'public, max-age=600',
+        'Cache-Control': 'no-cache', // Do not cache the graceful fallback
       },
     });
   } catch (error) {

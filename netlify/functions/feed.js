@@ -104,16 +104,16 @@ export default async function handler(req, context) {
 
   try {
     const url = new URL(req.url);
+    const page = url.searchParams.get('page') || 1;
     const forceRefresh = url.searchParams.has('t');
-    const page = parseInt(url.searchParams.get('page') || '1', 10);
     const store = getStore("vibeathon-store");
-
-    if (!forceRefresh && page === 1) {
-        // Attempt fast Blob load if not forcing refresh and it's the first page
+    
+    // 1. Attempt to serve from fast Netlify Blobs cache
+    if (!forceRefresh) {
         try {
-            const cachedFeed = await store.getJSON('feed_latest');
+            const cachedFeed = await store.getJSON(`feed_page_${page}`);
             if (cachedFeed) {
-                console.log('Serving feed from Blobs cache instantly.');
+                console.log(`Serving feed_page_${page} from Blobs cache instantly.`);
                 return new Response(JSON.stringify(cachedFeed), {
                     headers: {
                         'Content-Type': 'application/json',
@@ -123,112 +123,71 @@ export default async function handler(req, context) {
                 });
             }
         } catch (blobErr) {
-            console.warn('Blob read failed or not initialized locally:', blobErr.message);
+            console.warn('Blob feed read failed or not initialized locally:', blobErr.message);
         }
     }
 
-    // Generate manually
-    console.log(forceRefresh || page > 1 ? `Generating page ${page}...` : 'No cache found, generating...');
-    
-    // Fetch real headlines from free news API
-    const allHeadlines = await fetchRealHeadlines();
-    const startIndex = (page - 1) * 8;
-    const headlines = allHeadlines.slice(startIndex, startIndex + 8);
-    
-    if (headlines.length === 0) {
-      throw new Error('No more headlines available from news API');
+    // 2. Fetch raw news directly from NewsAPI for the graceful fallback AND for the background prompt
+    const categories = ['technology', 'business', 'science', 'sports'];
+    let headlines = [];
+    try {
+      const fetchPromises = categories.map(cat => 
+        fetch(`https://saurav.tech/NewsAPI/top-headlines/category/${cat}/us.json`).then(r => r.json())
+      );
+      const results = await Promise.all(fetchPromises);
+      
+      results.forEach(data => {
+        if (data.articles && data.articles.length > 0) {
+          headlines.push(...data.articles.slice(0, 4).map(a => ({
+             title: a.title,
+             description: a.description,
+             category: Object.keys(data).length > 0 ? a.category : 'news' 
+          })));
+        }
+      });
+      // Shuffle headlines
+      headlines = headlines.sort(() => 0.5 - Math.random()).slice(0, 10);
+    } catch (e) {
+      console.log('NewsAPI fetch failed:', e.message);
     }
-
+    
     const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     
-    const TRANSFORM_PROMPT = `You are the Editor-in-Chief for "THE SIGNAL", an elite, autonomous digital newsroom.
+    // 3. Fallback Data Structure to return IMMEDIATELY to prevent hanging
+    const fallbackData = {
+        articles: headlines.slice(0, 8).map(a => ({
+         title: a.title || "Latest Market Movements and Technological Breakthroughs",
+         slug: (a.title || "latest-news").toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40),
+         topic: "Wire",
+         excerpt: a.description || "The newsroom is currently processing deep analytical coverage of this ongoing story. Please check back for updates.",
+         readingTime: 3,
+         date: today
+        })),
+        trending: [
+         { name: "Artificial Intelligence", slug: "artificial-intelligence", velocity: "12k" },
+         { name: "Global Markets", slug: "global-markets", velocity: "8.4k" }
+        ]
+    };
     
-    Your task is to review the following REAL raw headlines and transform them into EXACTLY 8 compelling article cards and 7 trending topics.
-    
-    REAL HEADLINES:
-    ${headlines.map((h, i) => `[${h.category.toUpperCase()}] ${h.title} - ${h.description || ''}`).join('\n')}
-    
-    EDITORIAL RULES - DO NOT VIOLATE:
-    1. You must ONLY use the topics provided in the headlines above. Do not hallucinate fake news.
-    2. Excerpts MUST hook the reader with insight. Do not summarize; analyze.
-    3. NO generic filler phrases ("In a surprising turn of events", "Now more than ever", "Delve into").
-    
-    Respond ONLY with a valid JSON format exact match to this schema:
-    {
-      "articles": [
-        {
-          "title": "Editorial headline based on the real headline",
-          "slug": "url-safe-slug",
-          "topic": "Category Word",
-          "excerpt": "A punchy, 2-to-3 sentence hook revealing the core tension.",
-          "readingTime": 5, // Integer
-          "date": "${today}"
-        }
-      ],
-      "trending": [
-        {
-          "name": "Topic (1-3 words max)",
-          "slug": "topic-slug",
-          "velocity": "2.4k" // String with 'k'
-        }
-      ]
-    }`;
-
-    let data;
+    // 4. FIRE AND FORGET background generator if on Netlify, otherwise return
     try {
-      const model = genAI.getGenerativeModel({
-        model: 'meta/llama-3.1-70b-instruct',
-        generationConfig: {
-          temperature: 0.8,
-          maxOutputTokens: 8192,
-          responseMimeType: 'application/json',
-        },
-      });
-
-      const result = await model.generateContent(TRANSFORM_PROMPT);
-      let text = result.response.text();
-      
-      // Safety fallback: sometimes Llama outputs Markdown blocks
-      if (text.startsWith('\`\`\`json')) {
-        text = text.replace(/^\`\`\`json/, '').replace(/\`\`\`$/, '');
-      }
-      
-      data = JSON.parse(text);
-    } catch (llmError) {
-      console.warn('LLM aborted/timed out for Feed, failing gracefully to raw NewsAPI:', llmError.message);
-      
-      // Construct fallback JSON payload using raw NewsAPI data
-      data = {
-          articles: headlines.map((h) => ({
-              title: h.title,
-              slug: h.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 50),
-              topic: h.category,
-              excerpt: h.description || 'Breaking coverage from the global wire. The AI editorial engine is currently under heavy load.',
-              readingTime: 3,
-              date: today
-          })).slice(0, 8),
-          trending: [
-              { name: "Live Feed", slug: "live", velocity: "10k" },
-              { name: "Global Wire", slug: "wire", velocity: "5k" }
-          ]
-      };
+        const bgUrl = new URL('/api/feed-generator-background', req.url);
+        fetch(bgUrl.toString(), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ page, headlines: headlines })
+        }).catch(err => console.log('Background trigger failed:', err.message));
+        console.log('Fired async background request to /api/feed-generator-background. Returning graceful UI instantly.');
+    } catch(err) {
+        console.log('Could not fire background request:', err);
     }
 
-    // Save newly generated or fallback data to cache, BUT ONLY FOR PAGE 1
-    if (page === 1) {
-        try {
-            await store.setJSON('feed_latest', data);
-            console.log('Saved newly generated feed to Blobs.');
-        } catch(err) {
-            console.warn('Failed to save feed to blob locally', err.message);
-        }
-    }
-
-    return new Response(JSON.stringify(data), {
+    // 5. Return fast 
+    return new Response(JSON.stringify(fallbackData), {
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'public, max-age=60',
+        'Cache-Control': 'no-cache', // Important: Don't cache the fallback
       },
     });
   } catch (error) {
