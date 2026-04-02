@@ -18,26 +18,23 @@ export default async function handler(req, context) {
 
   try {
     const url = new URL(req.url);
-    const forceRefresh = url.searchParams.has('t');
     const store = getStore("vibeathon-store");
     
     // 1. Check Blob Cache
-    if (!forceRefresh) {
-        try {
-            const cachedDigest = await store.getJSON('digest_latest');
-            if (cachedDigest) {
-                console.log(`Serving digest from Blobs cache instantly.`);
-                return new Response(JSON.stringify(cachedDigest), {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*',
-                        'Cache-Control': 'public, max-age=60',
-                    },
-                });
-            }
-        } catch (blobErr) {
-            console.warn('Blob digest read failed or not initialized locally:', blobErr.message);
+    try {
+        const cachedDigest = await store.getJSON('digest_latest');
+        if (cachedDigest) {
+            console.log(`Serving digest from Blobs cache instantly. isGenerating: ${cachedDigest.isGenerating}`);
+            return new Response(JSON.stringify(cachedDigest), {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': 'no-cache', // important for polling
+                },
+            });
         }
+    } catch (blobErr) {
+        console.warn('Blob digest read failed or not initialized locally:', blobErr.message);
     }
 
     const today = new Date().toLocaleDateString('en-US', {
@@ -68,7 +65,7 @@ export default async function handler(req, context) {
             {
                 title: "Live Analysis Processing",
                 slug: "live-analysis",
-                summary: "Our 253B Parameter Editorial AI is currently synthesizing today's global trends. This is a highly complex autonomous function that will return a 60-second briefing shortly."
+                summary: "<span class='dynamic-ai-tag'><i>Our 253B Parameter Editorial AI is currently synthesizing today's global trends...</i></span>"
             },
             {
                 title: "Global Markets Update",

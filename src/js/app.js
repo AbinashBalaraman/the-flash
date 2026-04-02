@@ -6,6 +6,8 @@
 import { fetchFeed, fetchArticle, fetchDigest, askQuestion, sendChatMessage } from './services/api.js';
 import { getState, setState, setLoading } from './services/state.js';
 
+let aiPollCounts = { feed: 0, article: 0, digest: 0 };
+
 // ──────────────────────────────────────────────────────
 // ROUTER
 // ──────────────────────────────────────────────────────
@@ -86,9 +88,20 @@ async function loadFeed(force = false) {
     }
 
     if (data.isGenerating) {
+      aiPollCounts.feed++;
       setTimeout(() => {
-        if (getState().currentPage === 'feed') loadFeed(true);
+        if (getState().currentPage === 'feed') {
+          const tags = document.querySelectorAll('.dynamic-ai-tag i');
+          tags.forEach(tag => {
+            if (aiPollCounts.feed === 1) tag.innerText = "Extracting contextual intelligence...";
+            else if (aiPollCounts.feed === 2) tag.innerText = "Synthesizing cross-market variables...";
+            else if (aiPollCounts.feed >= 3) tag.innerText = "Finalizing editorial formatting...";
+          });
+          loadFeed(true);
+        }
       }, 5000);
+    } else {
+      aiPollCounts.feed = 0;
     }
   } catch (err) {
     renderFeedError(err.message);
@@ -241,11 +254,21 @@ async function loadArticle(slug, force = false) {
     renderArticle(data);
 
     if (data.isGenerating) {
+      aiPollCounts.article++;
       setTimeout(() => {
         if (getState().currentPage === 'article' && window.location.hash.includes(slug)) {
+          const tag = document.querySelector('.dynamic-ai-tag i');
+          if (tag) {
+             if (aiPollCounts.article === 1) tag.innerText = "Extracting contextual intelligence...";
+             else if (aiPollCounts.article === 2) tag.innerText = "Synthesizing 253B parameters...";
+             else if (aiPollCounts.article === 3) tag.innerText = "Drafting deep dive analysis...";
+             else if (aiPollCounts.article >= 4) tag.innerText = "Finalizing editorial formatting...";
+          }
           loadArticle(slug, true);
         }
       }, 5000);
+    } else {
+      aiPollCounts.article = 0;
     }
   } catch (err) {
     content.innerHTML = `
@@ -289,9 +312,20 @@ async function loadDigest(force = false) {
     renderDigest(data);
 
     if (data.isGenerating) {
+      aiPollCounts.digest++;
       setTimeout(() => {
-        if (getState().currentPage === 'digest') loadDigest(true);
+        if (getState().currentPage === 'digest') {
+          const tag = document.querySelector('.dynamic-ai-tag i');
+          if (tag) {
+             if (aiPollCounts.digest === 1) tag.innerText = "Correlating massive data vectors...";
+             else if (aiPollCounts.digest === 2) tag.innerText = "Generating executive briefing...";
+             else if (aiPollCounts.digest >= 3) tag.innerText = "Refining 60-second summary...";
+          }
+          loadDigest(true);
+        }
       }, 5000);
+    } else {
+      aiPollCounts.digest = 0;
     }
   } catch (err) {
     const stories = document.getElementById('digest-stories');

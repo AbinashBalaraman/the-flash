@@ -105,26 +105,23 @@ export default async function handler(req, context) {
   try {
     const url = new URL(req.url);
     const page = url.searchParams.get('page') || 1;
-    const forceRefresh = url.searchParams.has('t');
     const store = getStore("vibeathon-store");
     
     // 1. Attempt to serve from fast Netlify Blobs cache
-    if (!forceRefresh) {
-        try {
-            const cachedFeed = await store.getJSON(`feed_page_${page}`);
-            if (cachedFeed) {
-                console.log(`Serving feed_page_${page} from Blobs cache instantly.`);
-                return new Response(JSON.stringify(cachedFeed), {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*',
-                        'Cache-Control': 'public, max-age=60',
-                    },
-                });
-            }
-        } catch (blobErr) {
-            console.warn('Blob feed read failed or not initialized locally:', blobErr.message);
+    try {
+        const cachedFeed = await store.getJSON(`feed_page_${page}`);
+        if (cachedFeed) {
+            console.log(`Serving feed_page_${page} from Blobs cache instantly. isGenerating: ${cachedFeed.isGenerating}`);
+            return new Response(JSON.stringify(cachedFeed), {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': 'no-cache', // Important: don't let CDN trap polling requests
+                },
+            });
         }
+    } catch (blobErr) {
+        console.warn('Blob feed read failed or not initialized locally:', blobErr.message);
     }
 
     // 2. Fetch raw news directly from NewsAPI for the graceful fallback AND for the background prompt
@@ -160,7 +157,7 @@ export default async function handler(req, context) {
          title: a.title || "Latest Market Movements and Technological Breakthroughs",
          slug: (a.title || "latest-news").toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40),
          topic: "Wire",
-         excerpt: a.description || "The newsroom is currently processing deep analytical coverage of this ongoing story. Please check back for updates.",
+         excerpt: a.description || "<span class='dynamic-ai-tag'><i>The newsroom is currently processing deep analytical coverage...</i></span>",
          readingTime: 3,
          date: today
         })),

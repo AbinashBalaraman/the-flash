@@ -36,29 +36,25 @@ export default async function handler(req, context) {
     }
 
     const url = new URL(req.url);
-    const forceRefresh = url.searchParams.has('t');
     const store = getStore("vibeathon-store");
-
-    if (!forceRefresh) {
-        try {
-            const cachedArticle = await store.getJSON(`article_${slug}`);
-            if (cachedArticle) {
-                console.log(`Serving article_${slug} from Blobs cache instantly.`);
-                return new Response(JSON.stringify(cachedArticle), {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Access-Control-Allow-Origin': '*',
-                        'Cache-Control': 'public, max-age=60',
-                    },
-                });
-            }
-        } catch (blobErr) {
-            console.warn('Blob article read failed or not initialized locally:', blobErr.message);
-        }
-    }
-
     const topic = slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+    try {
+        const cachedArticle = await store.getJSON(`article_${slug}`);
+        if (cachedArticle) {
+            console.log(`Serving article_${slug} from Blobs cache instantly. isGenerating: ${cachedArticle.isGenerating}`);
+            return new Response(JSON.stringify(cachedArticle), {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': 'no-cache', // Important: let polling work
+                },
+            });
+        }
+    } catch (blobErr) {
+        console.warn('Blob article read failed or not initialized locally:', blobErr.message);
+    }
 
     // Fetch real article content from NewsAPI for fallback
     let articleContent = null;
