@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
+    "@netlify/blobs": "^10.7.4",
     "dotenv": "^17.4.0"
   }
 }

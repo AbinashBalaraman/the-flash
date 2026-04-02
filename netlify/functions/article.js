@@ -1,9 +1,12 @@
 // ═══════════════════════════════════════════════════════
 // ARTICLE FUNCTION — Generates full-length articles
-// Deep, investigative-quality journalism via Gemini
+// Uses cached templates + real headlines as fallback
 // ═══════════════════════════════════════════════════════
 
 import { genAI } from './gemini-config.js';
+import { getStore } from '@netlify/blobs';
+
+const NEWS_API = 'https://saurav.tech/NewsAPI';
 
 export default async function handler(req, context) {
   if (req.method === 'OPTIONS') {
@@ -32,64 +35,141 @@ export default async function handler(req, context) {
       });
     }
 
+    const url = new URL(req.url);
+    const forceRefresh = url.searchParams.has('t');
+    const store = getStore("vibeathon-store");
+
+    if (!forceRefresh) {
+        try {
+            const cachedArticle = await store.getJSON(`article_${slug}`);
+            if (cachedArticle) {
+                console.log(`Serving article_${slug} from Blobs cache instantly.`);
+                return new Response(JSON.stringify(cachedArticle), {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*',
+                        'Cache-Control': 'public, max-age=60',
+                    },
+                });
+            }
+        } catch (blobErr) {
+            console.warn('Blob article read failed or not initialized locally:', blobErr.message);
+        }
+    }
+
     const topic = slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
-    const ARTICLE_PROMPT = `You are a senior investigative journalist at "THE SIGNAL", an AI-native newsroom known for producing some of the most insightful cultural analysis in digital media. Your work is compared to the best of The Atlantic, Wired, and Bloomberg's feature reporting.
+    // Try to fetch real article content from NewsAPI
+    let articleContent = null;
+    try {
+      const categoryMap = {
+        'technology': 'technology',
+        'business': 'business', 
+        'science': 'science',
+        'sports': 'sports'
+      };
+      
+      const searchCategory = Object.keys(categoryMap).find(c => topic.toLowerCase().includes(c)) || 'technology';
+      
+      const res = await fetch(`${NEWS_API}/top-headlines/category/${searchCategory}/us.json`);
+      const data = await res.json();
+      
+      if (data.articles && data.articles.length > 0) {
+        const matchingArticle = data.articles.find(a => 
+          a.title && topic.toLowerCase().includes(a.title.toLowerCase().split(' ')[0])
+        ) || data.articles[0];
+        
+        if (matchingArticle && matchingArticle.title !== '[Removed]') {
+          articleContent = matchingArticle;
+        }
+      }
+    } catch (e) {
+      console.log('NewsAPI fetch failed, using LLM:', e.message);
+    }
 
-Today's date: ${new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}.
+    const ARTICLE_PROMPT = `You are an elite, veteran feature journalist writing for "THE SIGNAL," a prestigious digital magazine known for deep, analytical, and highly human writing. Your goal is to write a feature that is indistinguishable from a top-tier human writer at The Atlantic or Bloomberg Businessweek. 
 
-Write a FULL investigative article about: "${topic}"
+    TASK: Write a comprehensive 1000-1500 word feature article about: "${topic}".
+    
+    ${articleContent ? `REAL-WORLD BASE CONTEXT: "${articleContent.title}" - ${articleContent.description || ''}` : ''}
+    
+    HUMAN-LIKE WRITING MANDATES:
+    1. Sentence Rhythm: Vary your sentence lengths dramatically. Use short, punchy sentences for impact. Follow them with longer, flowing, descriptive sentences. Do not use uniform, robotic pacing.
+    2. Nuance and Reality: The world is messy. Do not tie the article up in a neat, perfect bow. Acknowledge contradictions, open questions, and the friction of the topic.
+    3. Active Voice: Use vivid, muscular verbs. Eliminate passive voice wherever possible. Look for specific, grounded details instead of broad generalizations.
+    4. The Lede (Opening): Drop the reader in "in media res" (in the middle of the action). Start with a specific scene, a startling statistic, or a sharp observation. DO NOT start with a broad generalization about society.
+    
+    STRUCTURAL RULES:
+    1. Organize into 3-4 distinct sections with compelling <h2> subheadings. No generic labels like "Introduction" or "Conclusion".
+    2. Inject plausible, realistic data points or logical expert insight to add weight and texture.
+    3. Include at least one powerful <blockquote> that captures the core tension.
+    
+    STRICT ANTI-PATTERNS (BANISHED AI CLICHÉS):
+    You will instantly fail if you use ANY of the following phrases or their variations:
+    - "In today's rapidly evolving/changing landscape..."
+    - "As society navigates..."
+    - "It remains to be seen..."
+    - "Only time will tell..."
+    - "Let's delve into / Let's explore..."
+    - "Furthermore", "Moreover", "Additionally", "In conclusion."
+    - "A balancing act", "A double-edged sword".
+    
+    Respond ONLY with JSON matching this structure:
+    {
+      "title": "A sharp, multi-layered headline (max 10 words)",
+      "deck": "A gripping one-sentence subheadline",
+      "topic": "${topic}",
+      "date": "${today}",
+      "readingTime": 7,
+      "body": "<p>Your full HTML article here using only p, h2, h3, blockquote, strong, em, ul, li tags. DO NOT INCLUDE AN H1. Do not use markdown wraps around HTML.</p>"
+    }`;
 
-EDITORIAL STANDARDS:
-- Open with a compelling lede that draws readers in with a vivid scene, surprising fact, or provocative question
-- Use the "inverted pyramid" meets "narrative journalism" approach
-- Include specific data points, statistics, and named examples (you may use plausible, representative examples)
-- Present multiple perspectives - analyze what they MEAN
-- Include expert-style analysis and "why this matters" framing
-- Use transitions that maintain narrative momentum
-- Build to a conclusion that reframes how the reader thinks about this topic
-- The piece should feel like something you'd share with a colleague and say "you need to read this"
+    let data;
+    try {
+      const model = genAI.getGenerativeModel({
+        model: 'nvidia/llama-3.1-nemotron-ultra-253b-v1',
+        generationConfig: {
+          temperature: 0.85,
+          maxOutputTokens: 8192,
+          responseMimeType: 'application/json',
+        },
+      });
 
-STRUCTURE REQUIREMENTS:
-- 1,200-1,800 words
-- 3-4 major sections with H2 subheadings
-- At least one blockquote (as a pull-quote or notable statistic highlight)
-- Use strong, specific language - not vague AI-speak
-- End with a forward-looking conclusion
+      const result = await model.generateContent(ARTICLE_PROMPT);
+      let text = result.response.text();
+      
+      // Safety fallback
+      if (text.startsWith('\`\`\`json')) {
+        text = text.replace(/^\`\`\`json/, '').replace(/\`\`\`$/, '');
+      }
+      
+      data = JSON.parse(text);
+    } catch (llmError) {
+      console.warn('LLM aborted/timed out, failing gracefully to NewsAPI:', llmError.message);
+      
+      if (!articleContent) {
+         // If we don't even have NewsAPI data, we must fail
+         throw llmError;
+      }
+      
+      // Construct fallback JSON payload using raw NewsAPI data
+      data = {
+         title: articleContent.title || topic,
+         deck: "Real-time coverage from the wire.",
+         topic: topic,
+         date: today,
+         readingTime: 2,
+         body: `<p>${articleContent.description || 'Live coverage of this event is ongoing. We are experiencing high traffic, rendering the full AI analysis temporarily unavailable. Check back shortly for the deep dive.'}</p>`
+      };
+    }
 
-WHAT TO AVOID:
-- Generic filler paragraphs
-- Starting with "In today's rapidly changing world..."
-- Listing things without analysis
-- Hedging every statement
-- Sounding like a corporate press release
-- Using phrases like "it's worth noting" or "it remains to be seen"
-
-Respond ONLY with valid JSON:
-{
-  "title": "The article headline",
-  "deck": "A one-sentence summary that adds context beyond the headline (like a newspaper subhead)",
-  "topic": "Category",
-  "date": "Apr 2, 2026",
-  "readingTime": 8,
-  "body": "<p>Full article HTML with <h2>, <p>, <blockquote>, <strong>, <em>, <ul>, <li> tags. NO <h1> tag.</p>"
-}
-
-The "body" field must be valid HTML using only: p, h2, h3, blockquote, strong, em, ul, ol, li tags.`;
-
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      generationConfig: {
-        temperature: 0.85,
-        topP: 0.92,
-        maxOutputTokens: 8192,
-        responseMimeType: 'application/json',
-      },
-    });
-
-    const result = await model.generateContent(ARTICLE_PROMPT);
-    const text = result.response.text();
-    const data = JSON.parse(text);
+    try {
+        await store.setJSON(`article_${slug}`, data);
+        console.log(`Saved newly generated article_${slug} to Blobs.`);
+    } catch(err) {
+        console.warn('Failed to save article to blob locally', err.message);
+    }
 
     return new Response(JSON.stringify(data), {
       headers: {

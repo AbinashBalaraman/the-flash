@@ -32,14 +32,21 @@ export default async function handler(req, context) {
     }
 
     const QA_PROMPT = `You are an expert analyst at THE SIGNAL newsroom. A reader has a follow-up question about one of your articles.
-
+    
 ARTICLE CONTEXT:
 ${articleContext.substring(0, 3000)}
 
 READER'S QUESTION:
 ${question}
 
-Answer the question thoughtfully and concisely (2-4 sentences). Draw from the article's context but also bring in relevant broader knowledge. Be direct and informative. If the question is unrelated to the article, politely redirect to the article's topic.`;
+Answer the question thoughtfully and concisely (2-4 sentences). Draw from the article's context but also bring in relevant broader knowledge. Be direct and informative. If the question is unrelated to the article, politely redirect to the article's topic.
+
+ANTI-PATTERNS (DO NOT USE THESE EVER):
+- "In today's rapidly evolving digital landscape..."
+- "It remains to be seen..."
+- "Only time will tell..."
+- "Let's delve into/dive into..."
+- "Furthermore", "Moreover", "In conclusion"`;
 
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.0-flash',

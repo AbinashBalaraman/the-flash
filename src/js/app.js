@@ -53,13 +53,36 @@ function navigate(hash) {
 // ──────────────────────────────────────────────────────
 // FEED
 // ──────────────────────────────────────────────────────
-async function loadFeed() {
+let feedPage = 1;
+
+async function loadFeed(force = false) {
+  feedPage = 1;
   setLoading('feed', true);
+  
+  const grid = document.getElementById('article-grid');
+  document.getElementById('load-more-container').style.display = 'none';
+
+  // Inject skeleton loaders
+  grid.innerHTML = Array(6).fill(`
+    <div class="article-card skeleton-card">
+      <div class="skeleton skeleton-text short" style="margin-bottom: 1rem;"></div>
+      <div class="skeleton skeleton-title"></div>
+      <div class="skeleton skeleton-text"></div>
+      <div class="skeleton skeleton-text"></div>
+      <div class="skeleton skeleton-text medium"></div>
+    </div>
+  `).join('');
+
   try {
-    const data = await fetchFeed();
-    setState({ articles: data.articles });
-    renderFeed(data.articles);
+    const data = await fetchFeed(force, 1);
+    const validArticles = Array.isArray(data.articles) ? data.articles : [];
+    setState({ articles: validArticles });
+    renderFeed(validArticles);
     renderTrending(data.trending);
+    
+    if (validArticles.length > 0) {
+      document.getElementById('load-more-container').style.display = 'block';
+    }
   } catch (err) {
     renderFeedError(err.message);
   } finally {
@@ -67,13 +90,59 @@ async function loadFeed() {
   }
 }
 
-function renderFeed(articles) {
+window.loadMoreFeed = async function() {
+  const btn = document.getElementById('load-more-btn');
   const grid = document.getElementById('article-grid');
-  const skeleton = document.getElementById('feed-skeleton');
-  if (skeleton) skeleton.remove();
+  
+  if (btn.disabled) return;
+  
+  btn.disabled = true;
+  btn.textContent = 'Analyzing more sources...';
+  
+  // Append temporary skeletons
+  const skeletonHTML = Array(4).fill(`
+    <div class="article-card skeleton-card load-more-skeleton">
+      <div class="skeleton skeleton-text short" style="margin-bottom: 1rem;"></div>
+      <div class="skeleton skeleton-title"></div>
+      <div class="skeleton skeleton-text"></div>
+      <div class="skeleton skeleton-text"></div>
+    </div>
+  `).join('');
+  grid.insertAdjacentHTML('beforeend', skeletonHTML);
 
-  grid.innerHTML = articles.map((article, i) => `
-    <div class="article-card" onclick="window.location.hash='#/article/${encodeURIComponent(article.slug)}'" role="article" tabindex="0">
+  feedPage++;
+
+  try {
+    const data = await fetchFeed(false, feedPage);
+    const validArticles = Array.isArray(data.articles) ? data.articles : [];
+    
+    // Remove skeletons
+    document.querySelectorAll('.load-more-skeleton').forEach(el => el.remove());
+    
+    if (validArticles.length === 0) {
+      btn.textContent = 'No more intelligence available';
+      return;
+    }
+    
+    const currentArticles = getState().articles || [];
+    setState({ articles: [...currentArticles, ...validArticles] });
+    
+    // Append new cards
+    const newCardsHTML = generateFeedHTML(validArticles);
+    grid.insertAdjacentHTML('beforeend', newCardsHTML);
+    
+    btn.textContent = 'Load More Intelligence \u2193';
+    btn.disabled = false;
+  } catch (err) {
+    document.querySelectorAll('.load-more-skeleton').forEach(el => el.remove());
+    btn.textContent = 'Failed. Try Again \u2193';
+    btn.disabled = false;
+  }
+};
+
+function generateFeedHTML(articles) {
+  return articles.map((article, i) => `
+    <div class="article-card fade-in" onclick="window.location.hash='#/article/${encodeURIComponent(article.slug)}'" role="article" tabindex="0">
       <div class="article-card__topic">
         <span class="badge badge--topic">${escapeHtml(article.topic)}</span>
       </div>
@@ -88,6 +157,14 @@ function renderFeed(articles) {
       </div>
     </div>
   `).join('');
+}
+
+function renderFeed(articles) {
+  const grid = document.getElementById('article-grid');
+  const skeleton = document.getElementById('feed-skeleton');
+  if (skeleton) skeleton.remove();
+
+  grid.innerHTML = generateFeedHTML(articles);
 }
 
 function renderTrending(trends) {
@@ -125,9 +202,20 @@ async function loadArticle(slug) {
   const content = document.getElementById('article-content');
   content.innerHTML = `
     <div style="padding: 2rem 0;">
-      <div class="skeleton-card" style="height: 40px; width: 60%; margin-bottom: 1rem;"></div>
-      <div class="skeleton-card" style="height: 24px; width: 80%; margin-bottom: 2rem;"></div>
-      <div class="skeleton-card" style="height: 400px; margin-bottom: 1rem;"></div>
+      <div class="skeleton skeleton-text short" style="height: 24px; margin-bottom: 1rem;"></div>
+      <div class="skeleton skeleton-title"></div>
+      <div class="skeleton skeleton-text medium" style="height: 18px; margin-bottom: 3rem;"></div>
+      
+      <div class="skeleton skeleton-text" style="height: 16px;"></div>
+      <div class="skeleton skeleton-text" style="height: 16px;"></div>
+      <div class="skeleton skeleton-text" style="height: 16px;"></div>
+      <div class="skeleton skeleton-text" style="height: 16px;"></div>
+      <div class="skeleton skeleton-text medium" style="height: 16px; margin-bottom: 2rem;"></div>
+      
+      <div class="skeleton skeleton-title" style="height: 1.5em; width: 40%;"></div>
+      <div class="skeleton skeleton-text" style="height: 16px;"></div>
+      <div class="skeleton skeleton-text" style="height: 16px;"></div>
+      <div class="skeleton skeleton-text medium" style="height: 16px;"></div>
     </div>
   `;
 
@@ -372,6 +460,32 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize components
   initChat();
   initQA();
+
+  // Theme Toggle
+  const themeToggle = document.getElementById('theme-toggle');
+  if (themeToggle) {
+    const iconSun = themeToggle.querySelector('.icon-sun');
+    const iconMoon = themeToggle.querySelector('.icon-moon');
+    
+    if (localStorage.getItem('theme') === 'light') {
+      document.body.classList.add('light-theme');
+      iconSun.style.display = 'block';
+      iconMoon.style.display = 'none';
+    }
+    
+    themeToggle.addEventListener('click', () => {
+      document.body.classList.toggle('light-theme');
+      const isLight = document.body.classList.contains('light-theme');
+      localStorage.setItem('theme', isLight ? 'light' : 'dark');
+      if (isLight) {
+        iconSun.style.display = 'block';
+        iconMoon.style.display = 'none';
+      } else {
+        iconSun.style.display = 'none';
+        iconMoon.style.display = 'block';
+      }
+    });
+  }
 
   // Handle routing
   window.addEventListener('hashchange', () => navigate(window.location.hash));

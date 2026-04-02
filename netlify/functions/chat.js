@@ -61,7 +61,14 @@ RULES:
 - Use **bold** for emphasis on key points
 - Be direct - don't pad with filler
 - If you don't know something specific, say so and offer related insight
-- Never refuse to discuss a topic - always provide what value you can`;
+- Never refuse to discuss a topic - always provide what value you can
+
+ANTI-PATTERNS (NEVER USE THESE PHRASES):
+- "In today's rapidly evolving digital landscape..."
+- "It remains to be seen..."
+- "Only time will tell..."
+- "Let's delve into/dive into..."
+- "Furthermore", "Moreover", "In conclusion"`;
 
     const model = genAI.getGenerativeModel({
       model: 'gemini-2.0-flash',

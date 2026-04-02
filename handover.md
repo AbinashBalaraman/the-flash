@@ -93,3 +93,15 @@ npm run build
 # Preview production build
 npm run preview
 ```
+
+### Live News API Integration
+
+Added real news data with **multi-source fallback**:
+
+1. **Primary**: saurav.tech/NewsAPI (no key required)
+   - Categories: technology, business, science, sports
+
+2. **Fallback**: Hacker News API (always available)
+   - Used if primary API fails or returns insufficient data
+
+This strengthens the "real reporting" claim — now using actual current events with redundancy.
