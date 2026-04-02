@@ -60,7 +60,8 @@ async function loadFeed(force = false) {
   setLoading('feed', true);
   
   const grid = document.getElementById('article-grid');
-  document.getElementById('load-more-container').style.display = 'none';
+  const loadMoreContainer = document.getElementById('load-more-container');
+  if (loadMoreContainer) loadMoreContainer.style.display = 'none';
 
   // Inject skeleton loaders
   grid.innerHTML = Array(6).fill(`
@@ -80,8 +81,8 @@ async function loadFeed(force = false) {
     renderFeed(validArticles);
     renderTrending(data.trending);
     
-    if (validArticles.length > 0) {
-      document.getElementById('load-more-container').style.display = 'block';
+    if (validArticles.length > 0 && loadMoreContainer) {
+      loadMoreContainer.style.display = 'block';
     }
   } catch (err) {
     renderFeedError(err.message);
