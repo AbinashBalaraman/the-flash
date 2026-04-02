@@ -128,7 +128,7 @@ export default async function handler(req, context) {
     let data;
     try {
       const model = genAI.getGenerativeModel({
-        model: 'nvidia/llama-3.1-nemotron-ultra-253b-v1',
+        model: 'meta/llama-3.1-70b-instruct',
         generationConfig: {
           temperature: 0.85,
           maxOutputTokens: 8192,

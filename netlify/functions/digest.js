@@ -47,7 +47,7 @@ Respond ONLY with valid JSON:
 }`;
 
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
+      model: 'meta/llama-3.1-70b-instruct',
       generationConfig: {
         temperature: 0.85,
         topP: 0.9,
