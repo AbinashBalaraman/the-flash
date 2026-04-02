@@ -89,14 +89,15 @@ async function loadFeed(force = false) {
 
     if (data.isGenerating) {
       aiPollCounts.feed++;
+      const tags = document.querySelectorAll('#page-feed .dynamic-ai-tag i');
+      tags.forEach(tag => {
+        if (aiPollCounts.feed === 1) tag.innerText = "Extracting contextual intelligence...";
+        else if (aiPollCounts.feed === 2) tag.innerText = "Synthesizing cross-market variables...";
+        else if (aiPollCounts.feed >= 3) tag.innerText = "Finalizing editorial formatting...";
+      });
+
       setTimeout(() => {
         if (getState().currentPage === 'feed') {
-          const tags = document.querySelectorAll('.dynamic-ai-tag i');
-          tags.forEach(tag => {
-            if (aiPollCounts.feed === 1) tag.innerText = "Extracting contextual intelligence...";
-            else if (aiPollCounts.feed === 2) tag.innerText = "Synthesizing cross-market variables...";
-            else if (aiPollCounts.feed >= 3) tag.innerText = "Finalizing editorial formatting...";
-          });
           loadFeed(true);
         }
       }, 5000);
@@ -218,35 +219,38 @@ function renderFeedError(message) {
 // ARTICLE
 // ──────────────────────────────────────────────────────
 async function loadArticle(slug, force = false) {
-  setLoading('article', true);
   const content = document.getElementById('article-content');
-  content.innerHTML = `
-    <div style="padding: 2rem 0;">
-      <div class="skeleton skeleton-text short" style="height: 24px; margin-bottom: 1rem;"></div>
-      <div class="skeleton skeleton-title"></div>
-      <div class="skeleton skeleton-text medium" style="height: 18px; margin-bottom: 3rem;"></div>
-      
-      <div class="skeleton skeleton-text" style="height: 16px;"></div>
-      <div class="skeleton skeleton-text" style="height: 16px;"></div>
-      <div class="skeleton skeleton-text" style="height: 16px;"></div>
-      <div class="skeleton skeleton-text" style="height: 16px;"></div>
-      <div class="skeleton skeleton-text medium" style="height: 16px; margin-bottom: 2rem;"></div>
-      
-      <div class="skeleton skeleton-title" style="height: 1.5em; width: 40%;"></div>
-      <div class="skeleton skeleton-text" style="height: 16px;"></div>
-      <div class="skeleton skeleton-text" style="height: 16px;"></div>
-      <div class="skeleton skeleton-text medium" style="height: 16px;"></div>
-    </div>
-  `;
+  
+  if (!force) {
+    setLoading('article', true);
+    content.innerHTML = `
+      <div style="padding: 2rem 0;">
+        <div class="skeleton skeleton-text short" style="height: 24px; margin-bottom: 1rem;"></div>
+        <div class="skeleton skeleton-title"></div>
+        <div class="skeleton skeleton-text medium" style="height: 18px; margin-bottom: 3rem;"></div>
+        
+        <div class="skeleton skeleton-text" style="height: 16px;"></div>
+        <div class="skeleton skeleton-text" style="height: 16px;"></div>
+        <div class="skeleton skeleton-text" style="height: 16px;"></div>
+        <div class="skeleton skeleton-text" style="height: 16px;"></div>
+        <div class="skeleton skeleton-text medium" style="height: 16px; margin-bottom: 2rem;"></div>
+        
+        <div class="skeleton skeleton-title" style="height: 1.5em; width: 40%;"></div>
+        <div class="skeleton skeleton-text" style="height: 16px;"></div>
+        <div class="skeleton skeleton-text" style="height: 16px;"></div>
+        <div class="skeleton skeleton-text medium" style="height: 16px;"></div>
+      </div>
+    `;
 
-  // Reset Q&A
-  const qaMessages = document.getElementById('qa-messages');
-  qaMessages.innerHTML = `
-    <div class="qa-placeholder">
-      <p>Ask any follow-up question about this article. The AI will answer based on the story's context.</p>
-    </div>
-  `;
-  setState({ qaHistory: [] });
+    // Reset Q&A
+    const qaMessages = document.getElementById('qa-messages');
+    qaMessages.innerHTML = `
+      <div class="qa-placeholder">
+        <p>Ask any follow-up question about this article. The AI will answer based on the story's context.</p>
+      </div>
+    `;
+    setState({ qaHistory: [] });
+  }
 
   try {
     const data = await fetchArticle(slug, force);
@@ -255,15 +259,16 @@ async function loadArticle(slug, force = false) {
 
     if (data.isGenerating) {
       aiPollCounts.article++;
+      const tag = document.querySelector('#article-content .dynamic-ai-tag i');
+      if (tag) {
+         if (aiPollCounts.article === 1) tag.innerText = "Extracting contextual intelligence...";
+         else if (aiPollCounts.article === 2) tag.innerText = "Synthesizing 253B parameters...";
+         else if (aiPollCounts.article === 3) tag.innerText = "Drafting deep dive analysis...";
+         else if (aiPollCounts.article >= 4) tag.innerText = "Finalizing editorial formatting...";
+      }
+
       setTimeout(() => {
         if (getState().currentPage === 'article' && window.location.hash.includes(slug)) {
-          const tag = document.querySelector('.dynamic-ai-tag i');
-          if (tag) {
-             if (aiPollCounts.article === 1) tag.innerText = "Extracting contextual intelligence...";
-             else if (aiPollCounts.article === 2) tag.innerText = "Synthesizing 253B parameters...";
-             else if (aiPollCounts.article === 3) tag.innerText = "Drafting deep dive analysis...";
-             else if (aiPollCounts.article >= 4) tag.innerText = "Finalizing editorial formatting...";
-          }
           loadArticle(slug, true);
         }
       }, 5000);
@@ -313,14 +318,14 @@ async function loadDigest(force = false) {
 
     if (data.isGenerating) {
       aiPollCounts.digest++;
+      const tag = document.querySelector('#page-digest .dynamic-ai-tag i');
+      if (tag) {
+         if (aiPollCounts.digest === 1) tag.innerText = "Correlating massive data vectors...";
+         else if (aiPollCounts.digest === 2) tag.innerText = "Generating executive briefing...";
+         else if (aiPollCounts.digest >= 3) tag.innerText = "Refining 60-second summary...";
+      }
       setTimeout(() => {
         if (getState().currentPage === 'digest') {
-          const tag = document.querySelector('.dynamic-ai-tag i');
-          if (tag) {
-             if (aiPollCounts.digest === 1) tag.innerText = "Correlating massive data vectors...";
-             else if (aiPollCounts.digest === 2) tag.innerText = "Generating executive briefing...";
-             else if (aiPollCounts.digest >= 3) tag.innerText = "Refining 60-second summary...";
-          }
           loadDigest(true);
         }
       }, 5000);

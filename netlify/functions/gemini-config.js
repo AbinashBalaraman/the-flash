@@ -70,7 +70,7 @@ class NVIDIAConfigShim {
                                 'Authorization': `Bearer ${NVIDIA_KEY}`,
                             },
                             body: JSON.stringify(body),
-                            signal: AbortSignal.timeout(isBackground ? 120000 : 4500), // STRICT 4.5s for Sync UI, 120s for Background
+                            signal: AbortSignal.timeout(isBackground ? 300000 : 4500), // STRICT 4.5s for Sync UI, 300s for Background
                         });
 
                         if (!response.ok) {

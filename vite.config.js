@@ -1,4 +1,6 @@
 import { defineConfig } from 'vite';
+import dotenv from 'dotenv';
+dotenv.config();
 
 export default defineConfig({
   root: '.',
@@ -10,5 +12,11 @@ export default defineConfig({
   server: {
     port: 3000,
     strictPort: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8888',
+        changeOrigin: true,
+      },
+    },
   },
 });

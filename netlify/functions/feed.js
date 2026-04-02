@@ -108,23 +108,46 @@ export default async function handler(req, context) {
     const store = getStore("vibeathon-store");
     
     // 1. Attempt to serve from fast Netlify Blobs cache
+    let cachedFeed = null;
     try {
-        const cachedFeed = await store.getJSON(`feed_page_${page}`);
+        cachedFeed = await store.getJSON(`feed_page_${page}`);
         if (cachedFeed) {
-            console.log(`Serving feed_page_${page} from Blobs cache instantly. isGenerating: ${cachedFeed.isGenerating}`);
-            return new Response(JSON.stringify(cachedFeed), {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*',
-                    'Cache-Control': 'no-cache', // Important: don't let CDN trap polling requests
-                },
-            });
+            const isStillGenerating = cachedFeed.isGenerating === true;
+            const startTime = cachedFeed.timestamp || 0;
+            const now = Date.now();
+            const timeoutMs = 5 * 60 * 1000; // 5 mins
+
+            if (isStillGenerating && (now - startTime < timeoutMs)) {
+                console.log(`Feed page ${page} is already being generated (Locked). Returning status.`);
+                return new Response(JSON.stringify(cachedFeed), {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*',
+                        'Cache-Control': 'no-cache',
+                    },
+                });
+            }
+            
+            if (!isStillGenerating) {
+                console.log(`Serving complete feed_page_${page} from Blobs cache.`);
+                return new Response(JSON.stringify(cachedFeed), {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*',
+                        'Cache-Control': 'no-cache',
+                    },
+                });
+            }
+            
+            console.log(`Feed page ${page} generation marker is stale. Re-triggering.`);
         }
     } catch (blobErr) {
-        console.warn('Blob feed read failed or not initialized locally:', blobErr.message);
+        console.warn('Blob feed read failed or not initialized:', blobErr.message);
     }
 
-    // 2. Fetch raw news directly from NewsAPI for the graceful fallback AND for the background prompt
+    // --- FALLBACK / TRIGGER LOGIC ---
+
+    // Fetch raw news news context if possible
     const categories = ['technology', 'business', 'science', 'sports'];
     let headlines = [];
     try {
@@ -132,7 +155,6 @@ export default async function handler(req, context) {
         fetch(`https://saurav.tech/NewsAPI/top-headlines/category/${cat}/us.json`).then(r => r.json())
       );
       const results = await Promise.all(fetchPromises);
-      
       results.forEach(data => {
         if (data.articles && data.articles.length > 0) {
           headlines.push(...data.articles.slice(0, 4).map(a => ({
@@ -142,17 +164,17 @@ export default async function handler(req, context) {
           })));
         }
       });
-      // Shuffle headlines
       headlines = headlines.sort(() => 0.5 - Math.random()).slice(0, 10);
     } catch (e) {
-      console.log('NewsAPI fetch failed:', e.message);
+      console.log('NewsAPI context fetch failed:', e.message);
     }
-    
+
     const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     
-    // 3. Fallback Data Structure to return IMMEDIATELY to prevent hanging
-    const fallbackData = {
+    // 1. Prepare Placeholder Data
+    const placeholder = {
         isGenerating: true,
+        timestamp: Date.now(),
         articles: headlines.slice(0, 8).map(a => ({
          title: a.title || "Latest Market Movements and Technological Breakthroughs",
          slug: (a.title || "latest-news").toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 40),
@@ -166,26 +188,36 @@ export default async function handler(req, context) {
          { name: "Global Markets", slug: "global-markets", velocity: "8.4k" }
         ]
     };
-    
-    // 4. FIRE AND FORGET background generator if on Netlify, otherwise return
+
+    // 2. Lock the Store immediately
     try {
-        const bgUrl = 'https://the-gflash.netlify.app/api/feed-generator-background';
-        fetch(bgUrl, {
+        await store.setJSON(`feed_page_${page}`, placeholder);
+        console.log(`Successfully locked feed_page_${page} (isGenerating: true)`);
+    } catch (sErr) {
+        console.error('Failed to set feed placeholder lock:', sErr.message);
+    }
+    
+    // 3. Trigger Background Process (Async)
+    try {
+        const bgUrl = `${url.origin}/api/feed-generator-background`;
+        // We await the trigger because Netlify Background functions return 202 quickly.
+        // This ensures the request is actually sent before the main function returns.
+        await fetch(bgUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ page, headlines: headlines })
         }).catch(err => console.log('Background trigger failed:', err.message));
-        console.log('Fired async background request to /api/feed-generator-background. Returning graceful UI instantly.');
+        console.log('Fired async background request to /api/feed-generator-background.');
     } catch(err) {
         console.log('Could not fire background request:', err);
     }
 
-    // 5. Return fast 
-    return new Response(JSON.stringify(fallbackData), {
+    // 4. Return Placeholder Instantly
+    return new Response(JSON.stringify(placeholder), {
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'no-cache', // Important: Don't cache the fallback
+        'Cache-Control': 'no-cache',
       },
     });
   } catch (error) {

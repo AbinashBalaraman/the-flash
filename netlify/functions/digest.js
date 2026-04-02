@@ -21,20 +21,41 @@ export default async function handler(req, context) {
     const store = getStore("vibeathon-store");
     
     // 1. Check Blob Cache
+    let cachedDigest = null;
     try {
-        const cachedDigest = await store.getJSON('digest_latest');
+        cachedDigest = await store.getJSON('digest_latest');
         if (cachedDigest) {
-            console.log(`Serving digest from Blobs cache instantly. isGenerating: ${cachedDigest.isGenerating}`);
-            return new Response(JSON.stringify(cachedDigest), {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Access-Control-Allow-Origin': '*',
-                    'Cache-Control': 'no-cache', // important for polling
-                },
-            });
+            const isStillGenerating = cachedDigest.isGenerating === true;
+            const startTime = cachedDigest.timestamp || 0;
+            const now = Date.now();
+            const timeoutMs = 5 * 60 * 1000; // 5 mins
+
+            if (isStillGenerating && (now - startTime < timeoutMs)) {
+                console.log(`Digest is already being generated (Locked). Returning status.`);
+                return new Response(JSON.stringify(cachedDigest), {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*',
+                        'Cache-Control': 'no-cache',
+                    },
+                });
+            }
+            
+            if (!isStillGenerating) {
+                console.log(`Serving complete digest from Blobs cache.`);
+                return new Response(JSON.stringify(cachedDigest), {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*',
+                        'Cache-Control': 'no-cache',
+                    },
+                });
+            }
+            
+            console.log(`Digest generation marker is stale. Re-triggering.`);
         }
     } catch (blobErr) {
-        console.warn('Blob digest read failed or not initialized locally:', blobErr.message);
+        console.warn('Blob digest read failed or not initialized:', blobErr.message);
     }
 
     const today = new Date().toLocaleDateString('en-US', {
@@ -44,22 +65,10 @@ export default async function handler(req, context) {
       day: 'numeric',
     });
 
-    // 2. Fire and Forget Background Generation
-    try {
-        const bgUrl = 'https://the-gflash.netlify.app/api/digest-generator-background';
-        fetch(bgUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
-        }).catch(err => console.log('Background trigger failed:', err.message));
-        console.log('Fired async background request to /api/digest-generator-background. Returning graceful UI instantly.');
-    } catch(err) {
-        console.log('Could not fire background digest request:', err);
-    }
-
-    // 3. Immedately Return Graceful Data
-    const fallbackData = {
+    // 1. Prepare Placeholder Data
+    const placeholder = {
         isGenerating: true,
+        timestamp: Date.now(),
         date: today,
         stories: [
             {
@@ -80,11 +89,35 @@ export default async function handler(req, context) {
         ]
     };
 
-    return new Response(JSON.stringify(fallbackData), {
+    // 2. Lock the Store immediately
+    try {
+        await store.setJSON('digest_latest', placeholder);
+        console.log(`Successfully locked digest_latest (isGenerating: true)`);
+    } catch (sErr) {
+        console.error('Failed to set digest placeholder lock:', sErr.message);
+    }
+    
+    // 3. Trigger Background Process (Async)
+    try {
+        const bgUrl = `${url.origin}/api/digest-generator-background`;
+        // We await the trigger because Netlify Background functions return 202 quickly.
+        // This ensures the request is actually sent before the main function returns.
+        await fetch(bgUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        }).catch(err => console.log('Background trigger failed:', err.message));
+        console.log('Fired async background request to /api/digest-generator-background.');
+    } catch(err) {
+        console.log('Could not fire background digest request:', err);
+    }
+
+    // 4. Return Placeholder Instantly
+    return new Response(JSON.stringify(placeholder), {
       headers: {
         'Content-Type': 'application/json',
         'Access-Control-Allow-Origin': '*',
-        'Cache-Control': 'no-cache', // Do not cache the graceful fallback
+        'Cache-Control': 'no-cache',
       },
     });
   } catch (error) {
