@@ -1,0 +1,127 @@
+/* ═══════════════════════════════════════════════════════
+   DESIGN SYSTEM — THE SIGNAL
+   Dark Premium Newsroom Theme
+   ═══════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Color Palette ── */
+  --bg-void:        #06060b;
+  --bg-primary:     #0a0a12;
+  --bg-surface:     #111119;
+  --bg-elevated:    #18182a;
+  --bg-hover:       #1e1e35;
+
+  --border-subtle:  rgba(255, 255, 255, 0.05);
+  --border-default: rgba(255, 255, 255, 0.08);
+  --border-strong:  rgba(255, 255, 255, 0.14);
+
+  --text-primary:   #eef0f6;
+  --text-secondary: #a0a4b8;
+  --text-muted:     #5d6180;
+  --text-ghost:     #363a52;
+
+  --accent:         #4f8fff;
+  --accent-bright:  #6fa8ff;
+  --accent-dim:     #2a5cbf;
+  --accent-glow:    rgba(79, 143, 255, 0.15);
+
+  --signal-cyan:    #38d9c6;
+  --signal-amber:   #f5a623;
+  --signal-rose:    #f06292;
+  --signal-violet:  #9c6bff;
+
+  --success:        #34d399;
+  --warning:        #fbbf24;
+  --danger:         #f87171;
+
+  /* ── Typography ── */
+  --font-display:   'Instrument Serif', Georgia, serif;
+  --font-body:      'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono:      'JetBrains Mono', 'Fira Code', monospace;
+
+  --text-xs:    0.75rem;       /* 12px */
+  --text-sm:    0.8125rem;     /* 13px */
+  --text-base:  0.9375rem;     /* 15px */
+  --text-md:    1.0625rem;     /* 17px */
+  --text-lg:    1.25rem;       /* 20px */
+  --text-xl:    1.5rem;        /* 24px */
+  --text-2xl:   2rem;          /* 32px */
+  --text-3xl:   2.75rem;       /* 44px */
+  --text-4xl:   3.5rem;        /* 56px */
+
+  /* ── Spacing ── */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+  --space-20: 5rem;
+  --space-24: 6rem;
+
+  /* ── Radius ── */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* ── Shadows ── */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --shadow-glow: 0 0 40px var(--accent-glow);
+
+  /* ── Transitions ── */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 400ms;
+
+  /* ── Layout ── */
+  --max-width: 1280px;
+  --sidebar-width: 320px;
+  --masthead-height: 60px;
+}
+
+/* ── Base ── */
+body {
+  font-family: var(--font-body);
+  font-size: var(--text-base);
+  font-weight: 400;
+  color: var(--text-primary);
+  background-color: var(--bg-void);
+  overflow-x: hidden;
+}
+
+/* ── Selection ── */
+::selection {
+  background: var(--accent);
+  color: var(--bg-void);
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--bg-hover);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-ghost);
+}
+
+/* ── Focus ── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}

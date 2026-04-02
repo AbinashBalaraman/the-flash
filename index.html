@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>THE SIGNAL — AI-Native Newsroom</title>
+  <meta name="description" content="An autonomous AI newsroom covering culture and trends. Deep, investigative-quality journalism powered by artificial intelligence." />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+
+  <!-- Fonts: Instrument Serif for headlines, Plus Jakarta Sans for body -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="/src/css/reset.css" />
+  <link rel="stylesheet" href="/src/css/design-system.css" />
+  <link rel="stylesheet" href="/src/css/layout.css" />
+  <link rel="stylesheet" href="/src/css/components.css" />
+  <link rel="stylesheet" href="/src/css/pages.css" />
+  <link rel="stylesheet" href="/src/css/animations.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- MASTHEAD / NAVIGATION                       -->
+  <!-- ═══════════════════════════════════════════ -->
+  <header id="masthead" class="masthead">
+    <div class="masthead__inner">
+      <a href="#/" class="masthead__brand" id="brand-link">
+        <span class="masthead__icon">◆</span>
+        <span class="masthead__title">THE SIGNAL</span>
+      </a>
+      <nav class="masthead__nav" id="main-nav">
+        <a href="#/" class="nav-link active" data-page="feed">Feed</a>
+        <a href="#/digest" class="nav-link" data-page="digest">Digest</a>
+      </nav>
+      <div class="masthead__actions">
+        <button class="chat-toggle" id="chat-toggle" aria-label="Open AI Chat">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+          <span>Ask AI</span>
+        </button>
+        <div class="masthead__badge">
+          <span class="badge badge--ai">AI-Native</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- MAIN CONTENT AREA                           -->
+  <!-- ═══════════════════════════════════════════ -->
+  <main id="app-main" class="app-main">
+
+    <!-- FEED PAGE -->
+    <section id="page-feed" class="page page--feed active">
+      <div class="feed-layout">
+        <div class="feed-content">
+          <div class="feed-header">
+            <h1 class="feed-header__title">Latest Intelligence</h1>
+            <p class="feed-header__subtitle">Autonomous AI reporting on culture, trends, and the stories that matter</p>
+          </div>
+          <div id="article-grid" class="article-grid">
+            <!-- Article cards inserted via JS -->
+            <div class="skeleton-grid" id="feed-skeleton">
+              <div class="skeleton-card"></div>
+              <div class="skeleton-card"></div>
+              <div class="skeleton-card"></div>
+              <div class="skeleton-card"></div>
+              <div class="skeleton-card"></div>
+              <div class="skeleton-card"></div>
+            </div>
+          </div>
+        </div>
+        <aside class="feed-sidebar">
+          <div class="sidebar-section">
+            <h3 class="sidebar-title">
+              <span class="pulse-dot"></span>
+              Trending Now
+            </h3>
+            <div id="trending-list" class="trending-list">
+              <!-- Trending topics inserted via JS -->
+            </div>
+          </div>
+          <div class="sidebar-section">
+            <h3 class="sidebar-title">Pipeline Status</h3>
+            <div class="pipeline-status" id="pipeline-status">
+              <div class="pipeline-step">
+                <span class="pipeline-icon">🔍</span>
+                <span class="pipeline-label">Discovery</span>
+                <span class="pipeline-state state--active">Active</span>
+              </div>
+              <div class="pipeline-step">
+                <span class="pipeline-icon">🧠</span>
+                <span class="pipeline-label">Analysis</span>
+                <span class="pipeline-state state--active">Active</span>
+              </div>
+              <div class="pipeline-step">
+                <span class="pipeline-icon">✍️</span>
+                <span class="pipeline-label">Writing</span>
+                <span class="pipeline-state state--ready">Ready</span>
+              </div>
+              <div class="pipeline-step">
+                <span class="pipeline-icon">📡</span>
+                <span class="pipeline-label">Publishing</span>
+                <span class="pipeline-state state--ready">Ready</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- ARTICLE PAGE -->
+    <section id="page-article" class="page page--article">
+      <div class="article-layout">
+        <article class="article-body" id="article-body">
+          <div class="article-meta" id="article-meta">
+            <a href="#/" class="article-back">← Back to Feed</a>
+          </div>
+          <div class="article-content" id="article-content">
+            <!-- Article content inserted via JS -->
+          </div>
+        </article>
+        <aside class="article-sidebar">
+          <div class="qa-panel" id="qa-panel">
+            <h3 class="qa-title">Ask About This Article</h3>
+            <div class="qa-messages" id="qa-messages">
+              <div class="qa-placeholder">
+                <p>Ask any follow-up question about this article. The AI will answer based on the story's context.</p>
+              </div>
+            </div>
+            <form class="qa-input-form" id="qa-form">
+              <input type="text" class="qa-input" id="qa-input" placeholder="Ask a question..." autocomplete="off" />
+              <button type="submit" class="qa-submit" id="qa-submit">→</button>
+            </form>
+          </div>
+        </aside>
+      </div>
+    </section>
+
+    <!-- DIGEST PAGE -->
+    <section id="page-digest" class="page page--digest">
+      <div class="digest-layout">
+        <div class="digest-header">
+          <h1 class="digest-title">Daily Digest</h1>
+          <p class="digest-subtitle">Today's top stories, summarized in 60 seconds</p>
+          <div class="digest-meta" id="digest-meta">
+            <span class="digest-date" id="digest-date"></span>
+            <span class="digest-reading-time">~1 min read</span>
+          </div>
+        </div>
+        <div class="digest-stories" id="digest-stories">
+          <div class="skeleton-digest" id="digest-skeleton">
+            <div class="skeleton-digest-item"></div>
+            <div class="skeleton-digest-item"></div>
+            <div class="skeleton-digest-item"></div>
+            <div class="skeleton-digest-item"></div>
+            <div class="skeleton-digest-item"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- CHAT OVERLAY                                -->
+  <!-- ═══════════════════════════════════════════ -->
+  <div id="chat-overlay" class="chat-overlay">
+    <div class="chat-container">
+      <div class="chat-header">
+        <h3 class="chat-header__title">
+          <span class="chat-header__icon">◆</span>
+          Signal AI
+        </h3>
+        <button class="chat-close" id="chat-close" aria-label="Close chat">✕</button>
+      </div>
+      <div class="chat-messages" id="chat-messages">
+        <div class="chat-message chat-message--ai">
+          <div class="chat-message__content">
+            <p>I'm Signal AI — your conversational window into today's culture and trends. Ask me anything: <em>"What's happening in gaming?"</em>, <em>"Why is everyone talking about AI art?"</em>, or <em>"Give me the biggest story today."</em></p>
+          </div>
+        </div>
+      </div>
+      <form class="chat-input-form" id="chat-form">
+        <input type="text" class="chat-input" id="chat-input" placeholder="Ask about trends, culture, or today's stories..." autocomplete="off" />
+        <button type="submit" class="chat-submit" id="chat-submit">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════ -->
+  <!-- BACKGROUND NOISE TEXTURE (SVG)              -->
+  <!-- ═══════════════════════════════════════════ -->
+  <svg class="noise-layer" aria-hidden="true">
+    <filter id="noise-filter">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch"/>
+      <feColorMatrix type="saturate" values="0"/>
+    </filter>
+    <rect width="100%" height="100%" filter="url(#noise-filter)" opacity="0.03"/>
+  </svg>
+
+  <script type="module" src="/src/js/app.js"></script>
+</body>
+</html>

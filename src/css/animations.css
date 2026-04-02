@@ -1,0 +1,113 @@
+/* ═══════════════════════════════════════════════════════
+   ANIMATIONS — Keyframes and micro-interactions
+   ═══════════════════════════════════════════════════════ */
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(1.2); }
+}
+
+@keyframes shimmer {
+  0% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+  100% { opacity: 0.5; }
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes dotBounce {
+  0%, 80%, 100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes typewriter {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes glowPulse {
+  0%, 100% {
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+  50% {
+    box-shadow: 0 0 40px var(--accent-glow), 0 0 60px rgba(79, 143, 255, 0.05);
+  }
+}
+
+/* ── Staggered card entrance ── */
+.article-card {
+  animation: fadeInUp var(--duration-slow) var(--ease-out) backwards;
+}
+
+.article-card:nth-child(1) { animation-delay: 0ms; }
+.article-card:nth-child(2) { animation-delay: 80ms; }
+.article-card:nth-child(3) { animation-delay: 160ms; }
+.article-card:nth-child(4) { animation-delay: 240ms; }
+.article-card:nth-child(5) { animation-delay: 320ms; }
+.article-card:nth-child(6) { animation-delay: 400ms; }
+.article-card:nth-child(7) { animation-delay: 480ms; }
+.article-card:nth-child(8) { animation-delay: 560ms; }
+
+/* ── Staggered trending items ── */
+.trending-item {
+  animation: slideInRight var(--duration-base) var(--ease-out) backwards;
+}
+
+.trending-item:nth-child(1) { animation-delay: 100ms; }
+.trending-item:nth-child(2) { animation-delay: 160ms; }
+.trending-item:nth-child(3) { animation-delay: 220ms; }
+.trending-item:nth-child(4) { animation-delay: 280ms; }
+.trending-item:nth-child(5) { animation-delay: 340ms; }
+.trending-item:nth-child(6) { animation-delay: 400ms; }
+.trending-item:nth-child(7) { animation-delay: 460ms; }
+.trending-item:nth-child(8) { animation-delay: 520ms; }
+
+/* ── Digest story entrance ── */
+.digest-story {
+  animation: fadeInUp var(--duration-slow) var(--ease-out) backwards;
+}
+
+.digest-story:nth-child(1) { animation-delay: 0ms; }
+.digest-story:nth-child(2) { animation-delay: 100ms; }
+.digest-story:nth-child(3) { animation-delay: 200ms; }
+.digest-story:nth-child(4) { animation-delay: 300ms; }
+.digest-story:nth-child(5) { animation-delay: 400ms; }
+
+/* ── Article content entrance ── */
+.article-content {
+  animation: fadeIn var(--duration-slow) var(--ease-out);
+}
+
+/* ── Chat message entrance ── */
+.chat-message {
+  animation: fadeInUp var(--duration-base) var(--ease-out);
+}
