@@ -5,7 +5,7 @@
 
 const NVIDIA_KEY = process.env.NVIDIA_API_KEY;
 const NVIDIA_BASE = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-const DEFAULT_MODEL = 'nvidia/llama-3.1-nemotron-ultra-253b-v1';
+const DEFAULT_MODEL = 'meta/llama-3.1-70b-instruct';
 
 /**
  * SHIM: Mimics the GoogleGenerativeAI SDK but uses NVIDIA NIMs
@@ -43,7 +43,8 @@ class NVIDIAConfigShim {
                 let primaryModel = modelName || DEFAULT_MODEL;
                 const FALLBACK_MODELS = [
                     primaryModel,
-                    'qwen/qwen3-next-80b-a3b-thinking'
+                    'meta/llama-3.1-70b-instruct',
+                    'meta/llama-3.1-8b-instruct'
                 ];
                 
                 // Remove duplicates in case primaryModel is already the fallback
