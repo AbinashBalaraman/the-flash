@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════
 
 import { genAI } from './gemini-config.js';
-import { getStore } from '@netlify/blobs';
+import { debugStore } from './utils.js';
 
 const NEWS_API = 'https://saurav.tech/NewsAPI';
 
@@ -27,7 +27,7 @@ export default async function handler(req, context) {
   }
 
   try {
-    const { slug } = await req.json();
+    const { slug, forceRefresh } = await req.json();
     if (!slug) {
       return new Response(JSON.stringify({ error: 'Slug is required' }), {
         status: 400,
@@ -36,21 +36,33 @@ export default async function handler(req, context) {
     }
 
     const url = new URL(req.url);
-    const store = getStore("vibeathon-store");
+    const store = debugStore("vibeathon-store");
     const topic = slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
     let cachedArticle = null;
     try {
-        cachedArticle = await store.getJSON(`article_${slug}`);
+        if (!forceRefresh) {
+            cachedArticle = await store.getJSON(`article_${slug}`);
+        } else {
+            console.log(`[🚀 FORCE] Refresh requested for article_${slug}. Bypassing cache.`);
+        }
         if (cachedArticle) {
             const isStillGenerating = cachedArticle.isGenerating === true;
+            const hasError = !!cachedArticle.error;
             const startTime = cachedArticle.timestamp || 0;
             const now = Date.now();
             const timeoutMs = 5 * 60 * 1000; // 5 mins
 
+            if (hasError) {
+                console.log(`[🚩 ERROR CACHE] Article ${slug} has a stored error. Returning to UI.`);
+                return new Response(JSON.stringify(cachedArticle), {
+                    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-cache' },
+                });
+            }
+
             if (isStillGenerating && (now - startTime < timeoutMs)) {
-                console.log(`Article ${slug} is already being generated (Locked). Returning status.`);
+                console.log(`[⏳ LOCKED] Article ${slug} is already being generated.`);
                 return new Response(JSON.stringify(cachedArticle), {
                     headers: {
                         'Content-Type': 'application/json',
@@ -87,7 +99,19 @@ export default async function handler(req, context) {
       const res = await fetch(`${NEWS_API}/top-headlines/category/${searchCategory}/us.json`);
       const data = await res.json();
       if (data.articles && data.articles.length > 0) {
-        articleContent = data.articles.find(a => a.title && topic.toLowerCase().includes(a.title.toLowerCase().split(' ')[0])) || data.articles[0];
+        // Require at least 2 matching significant keywords if topic is multi-word
+        const keywords = topic.toLowerCase().split(' ').filter(k => k.length > 3);
+        articleContent = data.articles.find(a => {
+            if (!a.title) return false;
+            const titleLow = a.title.toLowerCase();
+            const matchCount = keywords.filter(k => titleLow.includes(k)).length;
+            return keywords.length > 1 ? matchCount >= 2 : matchCount >= 1;
+        });
+        
+        // Final fallback: just a generic "Live processing" if no topical match found
+        if (!articleContent) {
+            console.log(`[ARTICLE] No matching fallback for ${topic}, using generic processing state.`);
+        }
       }
     } catch (e) {
       console.log('NewsAPI context fetch failed:', e.message);
@@ -105,25 +129,26 @@ export default async function handler(req, context) {
        body: `<p>${articleContent ? (articleContent.description || 'Live coverage incoming...') : 'Live coverage of this event is ongoing. We are experiencing high traffic, reducing the full AI processing capability temporarily.'}</p><hr><p class="dynamic-ai-tag"><i>Live Analysis Processing...</i></p><p><em>Our autonomous 253B-parameter engine is currently in the background generating the full feature article for this story. It will dynamically load here automatically as soon as it's ready.</em></p>`
     };
 
-    // 2. Lock the Store immediately
+    // 2. Lock the Store and Clear Logs immediately
     try {
         await store.setJSON(`article_${slug}`, placeholder);
-        console.log(`Successfully locked article_${slug} (isGenerating: true)`);
+        await store.delete(`logs_${slug}`).catch(() => {}); // Clear old logs
+        console.log(`Successfully locked article_${slug} and cleared old logs.`);
     } catch (sErr) {
         console.error('Failed to set placeholder lock:', sErr.message);
     }
     
-    // 3. Trigger Background Process (Async)
+    // 3. FIRE AND FORGET — trigger background generator
+    // CRITICAL: Do NOT await this. The main function must return the placeholder instantly.
     try {
         const bgUrl = `${url.origin}/api/article-generator-background`;
-        // We await the trigger because Netlify Background functions return 202 quickly.
-        // This ensures the request is actually sent before the main function returns.
-        await fetch(bgUrl, {
+        const bgPromise = fetch(bgUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ slug, topic })
         }).catch(err => console.log('Background trigger failed:', err.message));
-        console.log('Fired async background request to /api/article-generator-background.');
+        if (context && context.waitUntil) context.waitUntil(bgPromise);
+        console.log('Fired fire-and-forget background request to /api/article-generator-background.');
     } catch(err) {
         console.log('Could not fire background article request:', err);
     }

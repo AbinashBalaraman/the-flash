@@ -4,7 +4,7 @@
 // ═══════════════════════════════════════════════════════
 
 import { genAI } from './gemini-config.js';
-import { getStore } from '@netlify/blobs';
+import { debugStore } from './utils.js';
 
 const NEWS_APIS = [
   {
@@ -105,20 +105,39 @@ export default async function handler(req, context) {
   try {
     const url = new URL(req.url);
     const page = url.searchParams.get('page') || 1;
-    const store = getStore("vibeathon-store");
-    
-    // 1. Attempt to serve from fast Netlify Blobs cache
+    const forceRefresh = url.searchParams.get('forceRefresh') === 'true';
+
+    // 1. Get Base Data
+    const res = await fetch(`https://saurav.tech/NewsAPI/top-headlines/category/business/us.json`);
+    const data = await res.json();
+    const rawHeadlines = data.articles ? data.articles.slice(0, 10) : [];
+
+    // 2. Initialize Blobs & Check Cache
+    const store = debugStore("vibeathon-store");
     let cachedFeed = null;
+    
     try {
-        cachedFeed = await store.getJSON(`feed_page_${page}`);
+        if (!forceRefresh) {
+            cachedFeed = await store.getJSON(`feed_page_${page}`);
+        } else {
+            console.log(`[🚀 FORCE] Refresh requested for feed_page_${page}. Bypassing cache.`);
+        }
         if (cachedFeed) {
             const isStillGenerating = cachedFeed.isGenerating === true;
+            const hasError = !!cachedFeed.error;
             const startTime = cachedFeed.timestamp || 0;
             const now = Date.now();
             const timeoutMs = 5 * 60 * 1000; // 5 mins
 
+            if (hasError) {
+                console.log(`[🚩 ERROR CACHE] Feed page ${page} has a stored error. Returning to UI.`);
+                return new Response(JSON.stringify(cachedFeed), {
+                    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-cache' },
+                });
+            }
+
             if (isStillGenerating && (now - startTime < timeoutMs)) {
-                console.log(`Feed page ${page} is already being generated (Locked). Returning status.`);
+                console.log(`[⏳ LOCKED] Feed page ${page} is already being generated.`);
                 return new Response(JSON.stringify(cachedFeed), {
                     headers: {
                         'Content-Type': 'application/json',
@@ -197,17 +216,18 @@ export default async function handler(req, context) {
         console.error('Failed to set feed placeholder lock:', sErr.message);
     }
     
-    // 3. Trigger Background Process (Async)
+    // 3. FIRE AND FORGET — trigger background generator
+    // CRITICAL: Do NOT await this. The main function must return the placeholder instantly.
     try {
         const bgUrl = `${url.origin}/api/feed-generator-background`;
-        // We await the trigger because Netlify Background functions return 202 quickly.
-        // This ensures the request is actually sent before the main function returns.
-        await fetch(bgUrl, {
+        const bgPromise = fetch(bgUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ page, headlines: headlines })
         }).catch(err => console.log('Background trigger failed:', err.message));
-        console.log('Fired async background request to /api/feed-generator-background.');
+        // Keep the function context alive for the fire-and-forget request
+        if (context && context.waitUntil) context.waitUntil(bgPromise);
+        console.log('Fired fire-and-forget background request to /api/feed-generator-background.');
     } catch(err) {
         console.log('Could not fire background request:', err);
     }

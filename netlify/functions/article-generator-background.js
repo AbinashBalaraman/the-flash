@@ -1,5 +1,5 @@
 import { genAI } from './gemini-config.js';
-import { getStore } from '@netlify/blobs';
+import { debugStore, safeParseJSON, pushLog } from './utils.js';
 
 const NEWS_API = 'https://saurav.tech/NewsAPI';
 
@@ -14,10 +14,12 @@ export default async function handler(req, context) {
         });
     }
 
+    let slug = null;
+    let topic = null;
     try {
         const body = await req.json().catch(() => ({}));
-        const slug = body.slug;
-        const topic = body.topic;
+        slug = body.slug;
+        topic = body.topic;
         const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
         if (!slug || !topic) {
@@ -25,7 +27,18 @@ export default async function handler(req, context) {
             return new Response("Missing parameters.", { status: 400 });
         }
 
+        // --- CACHE CHECK (OPTIMIZATION) ---
+        const store = debugStore("vibeathon-store");
+        const existing = await store.getJSON(`article_${slug}`);
+        if (existing && !existing.error && !existing.isGenerating) {
+             console.log(`[📦 CACHED] Skipping background generation for ${slug}. Already exists in Blobs.`);
+             return new Response("Skipped (Cached)");
+        }
+
         console.log(`Starting Heavy 253B Background Generation for Article: ${slug}...`);
+        
+        await pushLog(slug, "🚀 Research Agent Initialized. Connecting to NVIDIA NIM...");
+        await pushLog(slug, "📝 Topic Analysis: Identifying core themes and competitive landscape...");
 
         let articleContent = null;
         try {
@@ -42,8 +55,12 @@ export default async function handler(req, context) {
                 }
             }
         } catch (e) {
+            await pushLog(slug, `⚠️ NewsAPI reference fetch failed: ${e.message}. Proceeding with analytical synthesis...`);
             console.log('NewsAPI fetch failed during background generation:', e.message);
         }
+
+        await pushLog(slug, "🔍 Contextual Synthesis complete. Dispatching to 253B Nemotron Ultra Engine...");
+        await pushLog(slug, "⚡ Model Inference in progress (this may take up to 60 seconds)...");
 
         const ARTICLE_PROMPT = `You are an elite, veteran feature journalist writing for "DailyAI," a prestigious digital magazine known for deep, analytical, and highly human writing. Your goal is to write a feature that is indistinguishable from a top-tier human writer at The Atlantic or Bloomberg Businessweek. 
 
@@ -93,21 +110,36 @@ export default async function handler(req, context) {
         });
 
         const result = await model.generateContent(ARTICLE_PROMPT);
-        let text = result.response.text();
-        
-        if (text.startsWith('\`\`\`json')) {
-            text = text.replace(/^\`\`\`json/, '').replace(/\`\`\`$/, '');
-        }
+        const text = result.response.text();
 
-        const data = JSON.parse(text);
-        const store = getStore("vibeathon-store");
+        await pushLog(slug, "📥 253B Inference complete. Received response stream.");
+        await pushLog(slug, "♻️ Normalizing and validating JSON structure (SafeParse)...");
+        
+        const data = safeParseJSON(text);
+        
+        await pushLog(slug, "✅ Formatting complete. Writing to permanent cache...");
         
         await store.setJSON(`article_${slug}`, data);
+        
+        await pushLog(slug, "🚀 [COMPLETE] Article saved to Blob Store.");
         console.log(`Saved newly generated 253B article for ${slug} to Blobs.`);
 
         return new Response("Success");
     } catch (error) {
-        console.error('Background article generation error:', error);
+        console.error('🔴 [BACKGROUND ERROR]', error);
+        try {
+            if (slug) {
+                await pushLog(slug, `❌ CRITICAL FAILURE: ${error.message}`);
+                const store = debugStore("vibeathon-store");
+                await store.setJSON(`article_${slug}`, {
+                    error: true,
+                    message: `AI Engine Error: ${error.message}. Please click 'Force Refresh' to try again.`,
+                    timestamp: Date.now()
+                });
+            }
+        } catch(blobErr) {
+            console.error('Failed to write error to blob:', blobErr);
+        }
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }
 }

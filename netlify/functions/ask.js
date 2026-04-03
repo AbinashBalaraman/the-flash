@@ -24,6 +24,8 @@ export default async function handler(req, context) {
 
   try {
     const { context: articleContext, question } = await req.json();
+    console.log(`[Q&A] Question: "${question}" | Context: ${articleContext?.substring(0, 50)}... (${articleContext?.length || 0} chars)`);
+    
     if (!question || !articleContext) {
       return new Response(JSON.stringify({ error: 'Question and context are required' }), {
         status: 400,
@@ -31,34 +33,30 @@ export default async function handler(req, context) {
       });
     }
 
-    const QA_PROMPT = `You are an expert analyst at DailyAI newsroom. A reader is messaging you about one of your articles.
-    
-ARTICLE CONTEXT:
-${articleContext.substring(0, 3000)}
-
-READER MESSAGE:
-${question}
-
-Instructions:
-1. If the reader asks a direct question, answer it thoughtfully and concisely (2-4 sentences) using the article context and broader knowledge.
-2. If the reader says something conversational (e.g. "hi", "hello", "thanks", "wow"), acknowledge it warmly and briefly, and invite them to ask a specific question about the article. Do NOT say "you haven't provided a question".
-3. Be direct and informative. No filler.
-
-ANTI-PATTERNS (DO NOT USE THESE EVER):
-- "In today's rapidly evolving digital landscape..."
-- "It remains to be seen..."
-- "Let's delve into/dive into..."
-- "Furthermore", "Moreover", "In conclusion"`;
-
     const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
+      model: 'nvidia/llama-3.1-nemotron-ultra-253b-v1',
+      systemInstruction: `You are "Signal AI", the specialized analytical intelligence of the DailyAI Newsroom. 
+      
+      CORE RESPONSE RULES:
+      1. Conversational Greeting: If the reader says "hi", "hello", "thanks", or similar conversational filler, DO NOT summarize the article. Simply respond naturally (e.g. "Hello! I'm Signal AI. I've analyzed the technical details of this story—what specific aspect would you like to dive into?").
+      2. Analytical Questions: If the reader asks a question about the article, provide a sharp, executive-level answer (2-4 sentences) based ONLY on the provided context.
+      3. No Echoing: Never repeat the user's message.
+      4. Signal Persona: Maintain a professional, high-intelligence, yet helpful persona. No conversational fluff beyond the greeting.
+      5. Branding: Start responses directly. No "Reader Message" or "Signal AI Response" labels. Just the message.`,
       generationConfig: {
         temperature: 0.7,
         maxOutputTokens: 512,
       },
     });
 
-    const result = await model.generateContent(QA_PROMPT);
+    const contents = [
+      {
+        role: 'user',
+        parts: [{ text: `${articleContext.substring(0, 4000)}\n\nQUESTION: ${question}\n\nSIGNAL AI RESPONSE:` }]
+      }
+    ];
+
+    const result = await model.generateContent({ contents });
     const answer = result.response.text();
 
     return new Response(JSON.stringify({ answer }), {

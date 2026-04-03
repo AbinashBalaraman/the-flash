@@ -1,5 +1,5 @@
 import { genAI } from './gemini-config.js';
-import { getStore } from '@netlify/blobs';
+import { debugStore, safeParseJSON } from './utils.js';
 
 export default async function handler(req, context) {
     if (req.method === 'OPTIONS') {
@@ -12,10 +12,11 @@ export default async function handler(req, context) {
         });
     }
 
+    let page = 1;
     try {
         const body = await req.json().catch(() => ({}));
         const headlines = body.headlines;
-        const page = body.page || 1;
+        page = body.page || 1;
         const today = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 
         if (!headlines || headlines.length === 0) {
@@ -69,21 +70,56 @@ export default async function handler(req, context) {
         });
 
         const result = await model.generateContent(TRANSFORM_PROMPT);
-        let text = result.response.text();
-        
-        if (text.startsWith('\`\`\`json')) {
-            text = text.replace(/^\`\`\`json/, '').replace(/\`\`\`$/, '');
-        }
-        
-        const data = JSON.parse(text);
-        const store = getStore("vibeathon-store");
+        const text = result.response.text();
+        const data = safeParseJSON(text);
+        const store = debugStore("vibeathon-store");
         
         await store.setJSON(`feed_page_${page}`, data);
-        console.log(`Successfully generated and cached 253B Feed data to feed_page_${page} Blobs.`);
+        console.log(`[✨ FEED SAVED] Cached 253B Feed data for page ${page}.`);
+
+        // 3. ✨ AUTOMATIC PRE-LOADING — Trigger all 8 articles in the background
+        if (data.articles && data.articles.length > 0) {
+            console.log(`[🚀 PRE-LOAD] Sequential triggering for ${data.articles.length} articles...`);
+            
+            const url = new URL(req.url);
+            const baseUrl = `${url.protocol}//${url.host}`;
+            const articleBgUrl = `${baseUrl}/api/article-generator-background`;
+
+            // Trigger sequentially with a delay to respect the "one by one" preference
+            for (const article of data.articles) {
+                try {
+                    await fetch(articleBgUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            slug: article.slug, 
+                            topic: article.topic,
+                            headlines: headlines 
+                        })
+                    });
+                    console.log(`[🚀 TRIGGERED] ${article.slug}`);
+                    // 1 second pause between triggers
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } catch (err) {
+                    console.error(`[PRE-LOAD ERROR] Failed to trigger ${article.slug}:`, err.message);
+                }
+            }
+            console.log(`[✅ PRE-LOAD QUEUED] All articles are now being born in order.`);
+        }
 
         return new Response("Success");
     } catch (error) {
-        console.error('Background feed generation error:', error);
+        console.error('🔴 [FEED BACKGROUND ERROR]', error);
+        try {
+            const store = debugStore("vibeathon-store");
+            await store.setJSON(`feed_page_${page}`, {
+                error: true,
+                message: `AI Feed Engine Error: ${error.message}. Please click 'Force Refresh'.`,
+                timestamp: Date.now()
+            });
+        } catch(blobErr) {
+            console.error('Failed to write feed error to blob:', blobErr);
+        }
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }
 }

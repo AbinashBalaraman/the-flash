@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node -r dotenv/config vite",
+    "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
   },

@@ -578,3 +578,30 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ── Article Status Banner (Showcase Mode) ── */
+.article-status-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-5) var(--space-6);
+  margin: var(--space-8) 0;
+  font-size: var(--text-sm);
+  line-height: 1.6;
+  color: var(--text-secondary);
+  border-left: 3px solid var(--signal-cyan);
+}
+
+.article-status-banner .pulse-dot {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+}
+
+
+/* Removing technical console bodies for final showcase */
+
+

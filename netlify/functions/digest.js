@@ -3,7 +3,7 @@
 // ═══════════════════════════════════════════════════════
 
 import { genAI } from './gemini-config.js';
-import { getStore } from '@netlify/blobs';
+import { debugStore } from './utils.js';
 
 export default async function handler(req, context) {
   if (req.method === 'OPTIONS') {
@@ -18,20 +18,33 @@ export default async function handler(req, context) {
 
   try {
     const url = new URL(req.url);
-    const store = getStore("vibeathon-store");
+    const forceRefresh = url.searchParams.get('forceRefresh') === 'true';
+    const store = debugStore("vibeathon-store");
     
     // 1. Check Blob Cache
     let cachedDigest = null;
     try {
-        cachedDigest = await store.getJSON('digest_latest');
+        if (!forceRefresh) {
+            cachedDigest = await store.getJSON('digest_latest');
+        } else {
+            console.log(`[🚀 FORCE] Refresh requested for digest. Bypassing cache.`);
+        }
         if (cachedDigest) {
             const isStillGenerating = cachedDigest.isGenerating === true;
+            const hasError = !!cachedDigest.error;
             const startTime = cachedDigest.timestamp || 0;
             const now = Date.now();
             const timeoutMs = 5 * 60 * 1000; // 5 mins
 
+            if (hasError) {
+                console.log(`[🚩 ERROR CACHE] Digest has a stored error. Returning to UI.`);
+                return new Response(JSON.stringify(cachedDigest), {
+                    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*', 'Cache-Control': 'no-cache' },
+                });
+            }
+
             if (isStillGenerating && (now - startTime < timeoutMs)) {
-                console.log(`Digest is already being generated (Locked). Returning status.`);
+                console.log(`[⏳ LOCKED] Digest is already being generated.`);
                 return new Response(JSON.stringify(cachedDigest), {
                     headers: {
                         'Content-Type': 'application/json',
@@ -97,17 +110,17 @@ export default async function handler(req, context) {
         console.error('Failed to set digest placeholder lock:', sErr.message);
     }
     
-    // 3. Trigger Background Process (Async)
+    // 3. FIRE AND FORGET — trigger background generator
+    // CRITICAL: Do NOT await this. The main function must return the placeholder instantly.
     try {
         const bgUrl = `${url.origin}/api/digest-generator-background`;
-        // We await the trigger because Netlify Background functions return 202 quickly.
-        // This ensures the request is actually sent before the main function returns.
-        await fetch(bgUrl, {
+        const bgPromise = fetch(bgUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({})
         }).catch(err => console.log('Background trigger failed:', err.message));
-        console.log('Fired async background request to /api/digest-generator-background.');
+        if (context && context.waitUntil) context.waitUntil(bgPromise);
+        console.log('Fired fire-and-forget background request to /api/digest-generator-background.');
     } catch(err) {
         console.log('Could not fire background digest request:', err);
     }

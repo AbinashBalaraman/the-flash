@@ -10,7 +10,7 @@ const API_BASE = '/api';
 async function apiFetch(endpoint, options = {}) {
   const url = `${API_BASE}/${endpoint}`;
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 12000);
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
   
   const config = {
     headers: { 'Content-Type': 'application/json' },
@@ -23,8 +23,9 @@ async function apiFetch(endpoint, options = {}) {
     clearTimeout(timeoutId);
     
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Request failed' }));
-      throw new Error(error.error || `HTTP ${response.status}`);
+      const errorData = await response.json().catch(() => null);
+      const msg = errorData?.details || errorData?.error || `HTTP ${response.status}: ${response.statusText}`;
+      throw new Error(msg);
     }
     return await response.json();
   } catch (err) {
@@ -42,7 +43,8 @@ async function apiFetch(endpoint, options = {}) {
  */
 export async function fetchFeed(forceRefresh = false, page = 1) {
   let endpoint = `feed?page=${page}`;
-  if (forceRefresh) endpoint += `&t=${Date.now()}`;
+  if (forceRefresh) endpoint += `&forceRefresh=true&t=${Date.now()}`;
+  else endpoint += `&t=${Date.now()}`; // Always prevent browser caching
   return apiFetch(endpoint);
 }
 
@@ -50,11 +52,9 @@ export async function fetchFeed(forceRefresh = false, page = 1) {
  * Fetch a full article by slug/topic
  */
 export async function fetchArticle(slug, forceRefresh = false) {
-  let endpoint = 'article';
-  if (forceRefresh) endpoint += `?t=${Date.now()}`;
-  return apiFetch(endpoint, {
+  return apiFetch('article', {
     method: 'POST',
-    body: JSON.stringify({ slug }),
+    body: JSON.stringify({ slug, forceRefresh }),
   });
 }
 
@@ -63,7 +63,8 @@ export async function fetchArticle(slug, forceRefresh = false) {
  */
 export async function fetchDigest(forceRefresh = false) {
   let endpoint = 'digest';
-  if (forceRefresh) endpoint += `?t=${Date.now()}`;
+  if (forceRefresh) endpoint += `?forceRefresh=true&t=${Date.now()}`;
+  else endpoint += `?t=${Date.now()}`; // Prevent browser caching
   return apiFetch(endpoint);
 }
 
@@ -85,4 +86,11 @@ export async function sendChatMessage(message, history = []) {
     method: 'POST',
     body: JSON.stringify({ message, history }),
   });
+}
+
+/**
+ * Fetch generation logs for a specific slug
+ */
+export async function fetchLogs(slug) {
+  return apiFetch(`logs?slug=${encodeURIComponent(slug)}&t=${Date.now()}`);
 }

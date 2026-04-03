@@ -3,10 +3,12 @@
    DailyAI — AI-Native Newsroom
    ═══════════════════════════════════════════════════════ */
 
-import { fetchFeed, fetchArticle, fetchDigest, askQuestion, sendChatMessage } from './services/api.js';
-import { getState, setState, setLoading } from './services/state.js';
-
 let aiPollCounts = { feed: 0, article: 0, digest: 0 };
+let logPollingInterval = null;
+
+// Import fetchLogs from api.js if not already there (it was added in the previous step)
+import { fetchFeed, fetchArticle, fetchDigest, askQuestion, sendChatMessage, fetchLogs } from './services/api.js';
+import { getState, setState, setLoading } from './services/state.js';
 
 // ──────────────────────────────────────────────────────
 // ROUTER
@@ -57,27 +59,31 @@ function navigate(hash) {
 // ──────────────────────────────────────────────────────
 let feedPage = 1;
 
-async function loadFeed(force = false) {
+async function loadFeed(bypassCache = false, isPolling = false) {
   feedPage = 1;
-  setLoading('feed', true);
-  
+
   const grid = document.getElementById('article-grid');
   const loadMoreContainer = document.getElementById('load-more-container');
   if (loadMoreContainer) loadMoreContainer.style.display = 'none';
 
-  // Inject skeleton loaders
-  grid.innerHTML = Array(6).fill(`
-    <div class="article-card skeleton-card">
-      <div class="skeleton skeleton-text short" style="margin-bottom: 1rem;"></div>
-      <div class="skeleton skeleton-title"></div>
-      <div class="skeleton skeleton-text"></div>
-      <div class="skeleton skeleton-text"></div>
-      <div class="skeleton skeleton-text medium"></div>
-    </div>
-  `).join('');
+  if (!isPolling) {
+      setLoading('feed', true);
+      // Inject skeleton loaders only on initial load
+      grid.innerHTML = Array(6).fill(`
+        <div class="article-card skeleton-card">
+          <div class="skeleton skeleton-text short" style="margin-bottom: 1rem;"></div>
+          <div class="skeleton skeleton-title"></div>
+          <div class="skeleton skeleton-text"></div>
+          <div class="skeleton skeleton-text"></div>
+          <div class="skeleton skeleton-text medium"></div>
+        </div>
+      `).join('');
+  }
 
   try {
-    const data = await fetchFeed(force, 1);
+    const data = await fetchFeed(bypassCache, 1);
+    if (data.error) throw new Error(data.message || "Unknown error occurred during background feed generation.");
+    
     const validArticles = Array.isArray(data.articles) ? data.articles : [];
     setState({ articles: validArticles });
     renderFeed(validArticles);
@@ -98,16 +104,24 @@ async function loadFeed(force = false) {
 
       setTimeout(() => {
         if (getState().currentPage === 'feed') {
-          loadFeed(true);
+          loadFeed(false, true); // bypassCache=false, isPolling=true
         }
       }, 5000);
     } else {
       aiPollCounts.feed = 0;
     }
   } catch (err) {
-    renderFeedError(err.message);
+    if (!isPolling) {
+        renderFeedError(err.message);
+    } else {
+        console.error("Feed polling error:", err);
+        const tags = document.querySelectorAll('#page-feed .dynamic-ai-tag i');
+        tags.forEach(tag => {
+            tag.innerHTML = `<span style="color: var(--danger);">⚠️ ${escapeHtml(err.message)}</span>`;
+        });
+    }
   } finally {
-    setLoading('feed', false);
+    if (!isPolling) setLoading('feed', false);
   }
 }
 
@@ -135,6 +149,7 @@ window.loadMoreFeed = async function() {
 
   try {
     const data = await fetchFeed(false, feedPage);
+    if (data.error) throw new Error(data.message);
     const validArticles = Array.isArray(data.articles) ? data.articles : [];
     
     // Remove skeletons
@@ -168,7 +183,7 @@ function generateFeedHTML(articles) {
         <span class="badge badge--topic">${escapeHtml(article.topic)}</span>
       </div>
       <h2 class="article-card__title">${escapeHtml(article.title)}</h2>
-      <p class="article-card__excerpt">${escapeHtml(article.excerpt)}</p>
+      <p class="article-card__excerpt">${article.excerpt}</p>
       <div class="article-card__footer">
         <div class="article-card__meta">
           <span>${escapeHtml(article.date)}</span>
@@ -218,27 +233,28 @@ function renderFeedError(message) {
 // ──────────────────────────────────────────────────────
 // ARTICLE
 // ──────────────────────────────────────────────────────
-async function loadArticle(slug, force = false) {
+async function loadArticle(slug, bypassCache = false, isPolling = false) {
   const content = document.getElementById('article-content');
   
-  if (!force) {
+  if (!isPolling) {
     setLoading('article', true);
     content.innerHTML = `
       <div style="padding: 2rem 0;">
         <div class="skeleton skeleton-text short" style="height: 24px; margin-bottom: 1rem;"></div>
         <div class="skeleton skeleton-title"></div>
-        <div class="skeleton skeleton-text medium" style="height: 18px; margin-bottom: 3rem;"></div>
+        <div class="skeleton skeleton-text medium" style="height: 18px; margin-bottom: 2rem;"></div>
         
+        <!-- Modern Status Loader -->
+        <div class="article-status-banner">
+          <div class="pulse-dot"></div>
+          <span>The Signal AI is currently synthesizing deep analytical coverage for this story...</span>
+        </div>
+
         <div class="skeleton skeleton-text" style="height: 16px;"></div>
         <div class="skeleton skeleton-text" style="height: 16px;"></div>
         <div class="skeleton skeleton-text" style="height: 16px;"></div>
         <div class="skeleton skeleton-text" style="height: 16px;"></div>
         <div class="skeleton skeleton-text medium" style="height: 16px; margin-bottom: 2rem;"></div>
-        
-        <div class="skeleton skeleton-title" style="height: 1.5em; width: 40%;"></div>
-        <div class="skeleton skeleton-text" style="height: 16px;"></div>
-        <div class="skeleton skeleton-text" style="height: 16px;"></div>
-        <div class="skeleton skeleton-text medium" style="height: 16px;"></div>
       </div>
     `;
 
@@ -253,44 +269,94 @@ async function loadArticle(slug, force = false) {
   }
 
   try {
-    const data = await fetchArticle(slug, force);
+    const data = await fetchArticle(slug, bypassCache);
+    if (data.error) throw new Error(data.message || "Unknown error occurred during background article generation.");
+    
     setState({ currentArticle: data });
     renderArticle(data);
 
     if (data.isGenerating) {
       aiPollCounts.article++;
-      const tag = document.querySelector('#article-content .dynamic-ai-tag i');
-      if (tag) {
-         if (aiPollCounts.article === 1) tag.innerText = "Extracting contextual intelligence...";
-         else if (aiPollCounts.article === 2) tag.innerText = "Synthesizing 253B parameters...";
-         else if (aiPollCounts.article === 3) tag.innerText = "Drafting deep dive analysis...";
-         else if (aiPollCounts.article >= 4) tag.innerText = "Finalizing editorial formatting...";
-      }
+      
+      // Silently poll for updates in background
+      // startLogPolling(slug); // Removed for modern UI
 
       setTimeout(() => {
         if (getState().currentPage === 'article' && window.location.hash.includes(slug)) {
-          loadArticle(slug, true);
+          loadArticle(slug, false, true); 
         }
       }, 5000);
     } else {
       aiPollCounts.article = 0;
+      stopLogPolling();
     }
   } catch (err) {
-    content.innerHTML = `
-      <div style="text-align: center; padding: 4rem 2rem; color: var(--text-muted);">
-        <p style="font-size: var(--text-lg); margin-bottom: 1rem;">Couldn't load article</p>
-        <p style="font-size: var(--text-sm);">${escapeHtml(err.message)}</p>
-        <a href="#/" style="display: inline-block; margin-top: 2rem; color: var(--accent);">← Back to Feed</a>
-      </div>
-    `;
+    if (!isPolling) {
+        content.innerHTML = `
+          <div style="text-align: center; padding: 4rem 2rem; color: var(--text-muted); border: 2px dashed rgba(255,0,0,0.2); border-radius: var(--radius-lg);">
+            <p style="font-size: var(--text-lg); margin-bottom: 1rem; color: var(--danger); font-weight: 700;">Critical AI Generation Failure</p>
+            <p style="font-size: var(--text-sm); color: var(--text-main); white-space: pre-wrap; text-align: left; background: rgba(0,0,0,0.3); border: 1px solid var(--danger); padding: 1.5rem; font-family: monospace; border-radius: var(--radius-sm);">${escapeHtml(err.message)}</p>
+            
+            <div style="margin-top: 2rem; display: flex; gap: 1rem; justify-content: center;">
+                <button onclick="window.location.reload()" style="padding: 0.5rem 1.5rem; background: var(--accent); color: white; border-radius: var(--radius-full); font-weight: 600; cursor: pointer; border: none;">Force Restart</button>
+                <a href="#/" style="display: inline-block; padding: 0.5rem 1.5rem; color: var(--text-muted); border: 1px solid var(--border); border-radius: var(--radius-full);">← Back to Feed</a>
+            </div>
+          </div>
+        `;
+    } else {
+        const logBody = document.getElementById('agent-logs-body');
+        if (logBody) {
+            logBody.innerHTML += `<div class="log-line log-line--error"><span class="log-line__marker">❌</span> FATAL: ${escapeHtml(err.message)}</div>`;
+            logBody.scrollTop = logBody.scrollHeight;
+        }
+    }
   } finally {
-    setLoading('article', false);
+    if (!isPolling) setLoading('article', false);
+  }
+}
+
+// ── LOG POLLING HELPERS ──
+async function startLogPolling(slug) {
+  if (logPollingInterval) clearInterval(logPollingInterval);
+  fetchAndRenderLogs(slug);
+  logPollingInterval = setInterval(() => fetchAndRenderLogs(slug), 1500);
+}
+
+function stopLogPolling() {
+  if (logPollingInterval) {
+    clearInterval(logPollingInterval);
+    logPollingInterval = null;
+  }
+}
+
+async function fetchAndRenderLogs(slug) {
+  try {
+    const data = await fetchLogs(slug);
+    if (data.logs && data.logs.length > 0) {
+      const container = document.getElementById('agent-logs-body');
+      if (container) {
+        container.innerHTML = data.logs.map(log => {
+          const isError = log.includes('❌') || log.includes('⚠️');
+          return `<div class="log-line ${isError ? 'log-line--error' : ''}">
+            <span class="log-line__marker">›</span> ${escapeHtml(log)}
+          </div>`;
+        }).join('');
+        container.scrollTop = container.scrollHeight;
+      }
+    }
+  } catch (e) {
+    console.warn('Log polling error:', e.message);
   }
 }
 
 function renderArticle(article) {
+  // If we just finished generating, stop logs
+  if (!article.isGenerating) {
+    stopLogPolling();
+  }
   const content = document.getElementById('article-content');
-  content.innerHTML = `
+  
+  let html = `
     <div class="article-headline">${escapeHtml(article.title)}</div>
     <div class="article-deck">${escapeHtml(article.deck)}</div>
     <div class="article-info">
@@ -302,17 +368,30 @@ function renderArticle(article) {
       <span class="article-info-divider"></span>
       <span class="badge badge--ai">◆ AI-Generated</span>
     </div>
-    <div class="article-text">${article.body}</div>
   `;
+
+  if (article.isGenerating) {
+    html += `
+      <div class="article-status-banner">
+        <div class="pulse-dot"></div>
+        <span>The Signal AI is currently synthesizing deep analytical coverage for this story. Your full feature will load automatically.</span>
+      </div>
+    `;
+  }
+
+  html += `<div class="article-text">${article.body}</div>`;
+  content.innerHTML = html;
 }
 
 // ──────────────────────────────────────────────────────
 // DIGEST
 // ──────────────────────────────────────────────────────
-async function loadDigest(force = false) {
-  setLoading('digest', true);
+async function loadDigest(bypassCache = false, isPolling = false) {
+  if (!isPolling) setLoading('digest', true);
   try {
-    const data = await fetchDigest(force);
+    const data = await fetchDigest(bypassCache);
+    if (data.error) throw new Error(data.message || "Unknown error occurred during background digest generation.");
+    
     setState({ digest: data });
     renderDigest(data);
 
@@ -326,7 +405,7 @@ async function loadDigest(force = false) {
       }
       setTimeout(() => {
         if (getState().currentPage === 'digest') {
-          loadDigest(true);
+          loadDigest(false, true); // bypassCache=false, isPolling=true
         }
       }, 5000);
     } else {
@@ -339,11 +418,11 @@ async function loadDigest(force = false) {
     stories.innerHTML = `
       <div style="text-align: center; padding: 4rem; color: var(--text-muted);">
         <p>Unable to generate today's digest</p>
-        <p style="font-size: var(--text-sm); margin-top: 0.5rem;">${escapeHtml(err.message)}</p>
+        <p style="font-size: var(--text-sm); margin-top: 0.5rem; color: var(--danger); white-space: pre-wrap; text-align: left; background: rgba(255,0,0,0.1); padding: 1rem;">${escapeHtml(err.message)}</p>
       </div>
     `;
   } finally {
-    setLoading('digest', false);
+    if (!isPolling) setLoading('digest', false);
   }
 }
 
@@ -358,7 +437,7 @@ function renderDigest(data) {
     <div class="digest-story" onclick="window.location.hash='#/article/${encodeURIComponent(story.slug)}'">
       <div class="digest-story__number">Story ${i + 1} of ${data.stories.length}</div>
       <h3 class="digest-story__title">${escapeHtml(story.title)}</h3>
-      <p class="digest-story__summary">${escapeHtml(story.summary)}</p>
+      <p class="digest-story__summary">${story.summary}</p>
     </div>
   `).join('');
 }
@@ -406,7 +485,8 @@ function initQA() {
       messages.innerHTML += `<div class="qa-message qa-message--ai">${escapeHtml(data.answer)}</div>`;
     } catch (err) {
       document.getElementById(loadingId)?.remove();
-      messages.innerHTML += `<div class="qa-message qa-message--ai" style="color: var(--danger);">Sorry, I couldn't process that question. Please try again.</div>`;
+      const errorMsg = err.message.includes('timeout') ? 'The AI is taking longer than usual. Please try a shorter question.' : 'Sorry, I couldn\'t process that question. Please try again.';
+      messages.innerHTML += `<div class="qa-message qa-message--ai" style="color: var(--danger); opacity: 0.8; font-size: 0.8rem;">⚠️ ${escapeHtml(errorMsg)}</div>`;
     }
     messages.scrollTop = messages.scrollHeight;
   });
@@ -552,14 +632,14 @@ document.addEventListener('DOMContentLoaded', () => {
     forceRefreshBtn.addEventListener('click', () => {
       const state = getState();
       if (state.currentPage === 'feed') {
-        loadFeed(true);
+        loadFeed(true, false); // bypassCache=true, isPolling=false
       } else if (state.currentPage === 'digest') {
-        loadDigest(true);
+        loadDigest(true, false);
       } else if (state.currentPage === 'article') {
         const hash = window.location.hash;
         if (hash.startsWith('#/article/')) {
           const slug = decodeURIComponent(hash.replace('#/article/', ''));
-          loadArticle(slug, true);
+          loadArticle(slug, true, false);
         }
       }
     });

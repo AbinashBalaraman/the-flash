@@ -1,5 +1,5 @@
 import { genAI } from './gemini-config.js';
-import { getStore } from '@netlify/blobs';
+import { debugStore, safeParseJSON } from './utils.js';
 
 export default async function handler(req, context) {
     if (req.method === 'OPTIONS') {
@@ -53,21 +53,28 @@ export default async function handler(req, context) {
         });
 
         const result = await model.generateContent(DIGEST_PROMPT);
-        let text = result.response.text();
-        
-        if (text.startsWith('\`\`\`json')) {
-            text = text.replace(/^\`\`\`json/, '').replace(/\`\`\`$/, '');
-        }
-
-        const data = JSON.parse(text);
-        const store = getStore("vibeathon-store");
+        const text = result.response.text();
+        const data = safeParseJSON(text);
+        const store = debugStore("vibeathon-store");
         
         await store.setJSON('digest_latest', data);
-        console.log(`Saved newly generated 253B digest to Blobs.`);
+        console.log(`[✨ DIGEST SAVED] Cached 253B Digest data.`);
 
         return new Response("Success");
     } catch (error) {
-        console.error('Background digest generation error:', error);
+        console.error('🔴 [DIGEST BACKGROUND ERROR]', error);
+        
+        try {
+            const store = debugStore("vibeathon-store");
+            await store.setJSON('digest_latest', {
+                error: true,
+                message: `AI Digest Engine Error: ${error.message}. Please click 'Force Refresh'.`,
+                timestamp: Date.now()
+            });
+        } catch(blobErr) {
+            console.error('Failed to write digest error to blob:', blobErr);
+        }
+        
         return new Response(JSON.stringify({ error: error.message }), { status: 500 });
     }
 }

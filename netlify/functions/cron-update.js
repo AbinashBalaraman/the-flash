@@ -127,7 +127,7 @@ export default async function handler(req, context) {
     const feedData = JSON.parse(feedText);
 
     // Save feed to blobs
-    await store.setJSON('feed_latest', feedData);
+    await store.set('feed_latest', JSON.stringify(feedData));
     console.log('[CRON] Main Feed saved to Blobs Cache.');
 
     // 3. Generate Articles
@@ -184,7 +184,7 @@ export default async function handler(req, context) {
             if (articleText.startsWith('\`\`\`json')) articleText = articleText.replace(/^\`\`\`json/, '').replace(/\`\`\`$/, '');
             const articleJson = JSON.parse(articleText);
             
-            await store.setJSON(`article_${article.slug}`, articleJson);
+            await store.set(`article_${article.slug}`, JSON.stringify(articleJson));
             console.log(`[CRON] Saved article_${article.slug} to Blobs.`);
         } catch (articleErr) {
             console.warn(`[CRON] Failed to generate article ${article.slug}:`, articleErr.message);

@@ -11,8 +11,9 @@ const DEFAULT_MODEL = 'nvidia/llama-3.1-nemotron-ultra-253b-v1';
  * SHIM: Mimics the GoogleGenerativeAI SDK but uses NVIDIA NIMs
  */
 class NVIDIAConfigShim {
-    getGenerativeModel({ model: modelName, generationConfig, systemInstruction, isBackground }) {
-        const effectiveModel = DEFAULT_MODEL;
+    getGenerativeModel({ model: modelName, systemInstruction, generationConfig, isBackground = false }) {
+        // User preference: 253B is primary for chat/ai, 70B is secondary
+        const effectiveModel = isBackground ? DEFAULT_MODEL : (modelName || 'nvidia/llama-3.1-nemotron-ultra-253b-v1');
 
         return {
             generateContent: async (promptData) => {
@@ -39,15 +40,15 @@ class NVIDIAConfigShim {
                     });
                 }
 
-                // Define models priority (253B first as requested, 70B fallback)
-                let primaryModel = modelName || DEFAULT_MODEL;
+                // Define models priority (User: 253B Primary, 70B Secondary)
                 const FALLBACK_MODELS = [
-                    primaryModel,
-                    'meta/llama-3.1-70b-instruct'
+                    'nvidia/llama-3.1-nemotron-ultra-253b-v1', // Global Primary
+                    'meta/llama-3.1-70b-instruct',               // High-Speed Secondary
+                    'meta/llama-3.1-8b-instruct'                 // Emergency Fallback
                 ];
                 
-                // Remove duplicates in case primaryModel is already the fallback
-                const uniqueModels = [...new Set(FALLBACK_MODELS)];
+                // If a specific model was requested by caller (e.g. for background), prepend it
+                const uniqueModels = [...new Set([effectiveModel, ...FALLBACK_MODELS])];
 
                 let lastError = null;
 
@@ -70,13 +71,15 @@ class NVIDIAConfigShim {
                                 'Authorization': `Bearer ${NVIDIA_KEY}`,
                             },
                             body: JSON.stringify(body),
-                            signal: AbortSignal.timeout(isBackground ? 300000 : 4500), // STRICT 4.5s for Sync UI, 300s for Background
+                            signal: AbortSignal.timeout(isBackground ? 900000 : 9900), // Max for Netlify (10s sync / 15m background)
                         });
 
                         if (!response.ok) {
                             const errText = await response.text().catch(() => '');
-                            console.warn(`[NVIDIA] ERROR ${response.status} on ${modelId}: ${errText}. Trying next model...`);
-                            lastError = new Error(`NVIDIA API Error (${response.status}): ${errText}`);
+                            console.error(`[🔴 NVIDIA ERROR] ${response.status} ${response.statusText} on ${modelId}`);
+                            console.error(`[🔴 RESPONSE BODY] ${errText}`);
+                            
+                            lastError = new Error(`NVIDIA API ${response.status} (${response.statusText}): ${errText || 'No response body'}`);
                             continue; // Try next model
                         }
 
@@ -95,13 +98,6 @@ class NVIDIAConfigShim {
                 // If we exhausted all the models
                 console.error(`[NVIDIA] CRITICAL: All models in fallback chain failed.`);
                 throw lastError;
-
-                // Shim: return Gemini-shaped response
-                return {
-                    response: {
-                        text: () => content
-                    }
-                };
             }
         };
     }
