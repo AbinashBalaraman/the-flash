@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════
    APP.JS — Main application entry point
-   DailyAI — AI-Native Newsroom
+   DailyAI — Autonomous Investigative Newsroom
    ═══════════════════════════════════════════════════════ */
 
 let aiPollCounts = { feed: 0, article: 0, digest: 0 };
@@ -25,6 +25,8 @@ function navigate(hash) {
     slug = decodeURIComponent(hash.replace('#/article/', ''));
   } else if (hash === '#/digest') {
     target = 'digest';
+  } else if (hash === '#/about') {
+    target = 'about';
   }
 
   // Update pages
@@ -245,10 +247,10 @@ async function loadArticle(slug, bypassCache = false, isPolling = false) {
         <div class="skeleton skeleton-text medium" style="height: 18px; margin-bottom: 2rem;"></div>
         
         <!-- Modern Status Loader -->
-        <div class="article-status-banner">
-          <div class="pulse-dot"></div>
-          <span>The Signal AI is currently synthesizing deep analytical coverage for this story...</span>
-        </div>
+         <div class="article-status-banner">
+           <div class="pulse-dot"></div>
+           <span>DailyAI is currently compiling an investigative report on this subject...</span>
+         </div>
 
         <div class="skeleton skeleton-text" style="height: 16px;"></div>
         <div class="skeleton skeleton-text" style="height: 16px;"></div>
@@ -374,7 +376,7 @@ function renderArticle(article) {
     html += `
       <div class="article-status-banner">
         <div class="pulse-dot"></div>
-        <span>The Signal AI is currently synthesizing deep analytical coverage for this story. Your full feature will load automatically.</span>
+        <span>DailyAI's autonomous pipeline is currently synthesizing investigative coverage for this story. Your full feature will load automatically.</span>
       </div>
     `;
   }
@@ -457,38 +459,42 @@ function initQA() {
     if (!article) return;
 
     input.value = '';
-    const messages = document.getElementById('qa-messages');
+    const qaMessages = document.getElementById('qa-messages');
 
     // Remove placeholder
-    const placeholder = messages.querySelector('.qa-placeholder');
+    const placeholder = qaMessages.querySelector('.qa-placeholder');
     if (placeholder) placeholder.remove();
 
     // Add user question
-    messages.innerHTML += `<div class="qa-message qa-message--user">❯ ${escapeHtml(question)}</div>`;
+    qaMessages.insertAdjacentHTML('beforeend', `<div class="qa-message qa-message--user">❯ ${escapeHtml(question)}</div>`);
 
     // Add loading
     const loadingId = `qa-loading-${Date.now()}`;
-    messages.innerHTML += `
-      <div class="loading-indicator" id="${loadingId}">
-        <div class="loading-dots"><span></span><span></span><span></span></div>
-        <span>Analyzing...</span>
+    qaMessages.insertAdjacentHTML('beforeend', `
+    <div class="qa-message qa-message--ai" id="${loadingId}">
+      <div class="qa-content">
+        <p class="typing-indicator" style="font-size: var(--text-sm);">Bureau is reviewing sources<span>.</span><span>.</span><span>.</span></p>
       </div>
-    `;
-    messages.scrollTop = messages.scrollHeight;
+    </div>
+  `);
 
-    try {
-      const data = await askQuestion(
+  qaMessages.scrollTop = qaMessages.scrollHeight;
+
+  try {
+    const data = await askQuestion(
         `Title: ${article.title}\n\n${article.body?.replace(/<[^>]*>/g, '')}`,
         question
       );
-      document.getElementById(loadingId)?.remove();
-      messages.innerHTML += `<div class="qa-message qa-message--ai">${escapeHtml(data.answer)}</div>`;
-    } catch (err) {
-      document.getElementById(loadingId)?.remove();
-      const errorMsg = err.message.includes('timeout') ? 'The AI is taking longer than usual. Please try a shorter question.' : 'Sorry, I couldn\'t process that question. Please try again.';
-      messages.innerHTML += `<div class="qa-message qa-message--ai" style="color: var(--danger); opacity: 0.8; font-size: 0.8rem;">⚠️ ${escapeHtml(errorMsg)}</div>`;
+    
+    const loadingEl = document.getElementById(loadingId);
+    if (!data || !data.answer) {
+        throw new Error("Missing answer payload from backend");
     }
-    messages.scrollTop = messages.scrollHeight;
+    loadingEl.innerHTML = `<div class="qa-content"><p>${escapeHtml(data.answer)}</p></div>`;
+  } catch (err) {
+    document.getElementById(loadingId).innerHTML = `<div class="qa-content"><p style="color: var(--error);"><i>Verification desk unavailable. Error: ${err.message}.</i></p></div>`;
+  }
+    qaMessages.scrollTop = qaMessages.scrollHeight;
   });
 }
 
@@ -519,45 +525,43 @@ function initChat() {
     if (!message) return;
 
     input.value = '';
-    const messages = document.getElementById('chat-messages');
+    const chatMessages = document.getElementById('chat-messages');
 
-    // Add user message
-    messages.innerHTML += `
+    // Add User Message
+    chatMessages.insertAdjacentHTML('beforeend', `
       <div class="chat-message chat-message--user">
-        <div class="chat-message__content"><p>${escapeHtml(message)}</p></div>
-      </div>
-    `;
-
-    // Add loading
-    const loadingId = `chat-loading-${Date.now()}`;
-    messages.innerHTML += `
-      <div class="chat-message chat-message--ai" id="${loadingId}">
         <div class="chat-message__content">
-          <div class="loading-indicator">
-            <div class="loading-dots"><span></span><span></span><span></span></div>
-            <span>Thinking...</span>
-          </div>
+          <p>${escapeHtml(message)}</p>
         </div>
       </div>
-    `;
-    messages.scrollTop = messages.scrollHeight;
+    `);
+
+    // Add initial "loading" state
+    const loadingId = 'loading-' + Date.now();
+    chatMessages.insertAdjacentHTML('beforeend', `
+      <div class="chat-message chat-message--ai" id="${loadingId}">
+        <div class="chat-message__content">
+          <p class="typing-indicator">Desk is analyzing<span>.</span><span>.</span><span>.</span></p>
+        </div>
+      </div>
+    `);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
 
     try {
       const history = getState().chatHistory;
       const data = await sendChatMessage(message, history);
 
-      document.getElementById(loadingId)?.remove();
-      messages.innerHTML += `
-        <div class="chat-message chat-message--ai">
-          <div class="chat-message__content">${formatChatResponse(data.response)}</div>
-        </div>
-      `;
+      const loadingEl = document.getElementById(loadingId);
+      if (!data || !data.response) {
+          throw new Error("Invalid response structure from backend.");
+      }
+      loadingEl.innerHTML = `<div class="chat-message__content">${formatChatResponse(data.response)}</div>`;
 
       setState({
         chatHistory: [
           ...history,
           { role: 'user', content: message },
-          { role: 'assistant', content: data.response },
+          { role: 'assistant', content: responseText },
         ],
       });
     } catch (err) {

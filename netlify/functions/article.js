@@ -94,7 +94,7 @@ export default async function handler(req, context) {
     // Fetch real article news context if possible
     let articleContent = null;
     try {
-      const categoryMap = { 'technology': 'technology', 'business': 'business', 'science': 'science', 'sports': 'sports' };
+      const categoryMap = { 'technology': 'technology', 'business': 'business', 'science': 'science', 'general': 'general', 'health': 'health' };
       const searchCategory = Object.keys(categoryMap).find(c => topic.toLowerCase().includes(c)) || 'technology';
       const res = await fetch(`${NEWS_API}/top-headlines/category/${searchCategory}/us.json`);
       const data = await res.json();
@@ -173,6 +173,4 @@ export default async function handler(req, context) {
   }
 }
 
-export const config = {
-  path: '/api/article',
-};
+

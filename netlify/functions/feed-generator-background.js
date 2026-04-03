@@ -26,35 +26,39 @@ export default async function handler(req, context) {
 
         console.log(`Starting Heavy 253B Background Generation for Feed page ${page}...`);
 
-        const TRANSFORM_PROMPT = `You are the Editor-in-Chief for "DailyAI", an elite, autonomous digital newsroom.
+        const TRANSFORM_PROMPT = `You are the Editor-in-Chief for "DailyAI", a fully autonomous investigative newsroom that operates WITHOUT human editors. Your role is to transform raw wire headlines into serious, investigative-grade journalism. Every article you produce replaces the need for human reporters, editors, and analysts.
         
         Your task is to review the following REAL raw headlines and transform them into EXACTLY 8 compelling article cards and 7 trending topics.
         
         REAL HEADLINES:
         ${headlines.map((h, i) => `[${h.category?.toUpperCase() || 'NEWS'}] ${h.title} - ${h.description || ''}`).join('\n')}
         
-        EDITORIAL RULES - DO NOT VIOLATE:
+        EDITORIAL RULES - STRICT COMPLIANCE REQUIRED:
         1. You must ONLY use the topics provided in the headlines above. Do not hallucinate fake news.
-        2. Excerpts MUST hook the reader with insight. Do not summarize; analyze.
-        3. NO generic filler phrases ("In a surprising turn of events", "Now more than ever", "Delve into").
+        2. FOCUS EXCLUSIVELY on: geopolitics, macroeconomics, technology policy, scientific breakthroughs, public health crises, regulatory shifts, and systemic global events.
+        3. DO NOT generate articles about: celebrity gossip, internet culture, gaming, social media trends, entertainment, memes, or lifestyle content.
+        4. Excerpts MUST provide analytical insight, not summaries. Frame each story through its systemic implications.
+        5. NO generic filler phrases ("In a surprising turn of events", "Now more than ever", "Delve into").
+        6. Every article must read like a Reuters or Bloomberg wire dispatch — authoritative, substantive, and evidence-grounded.
+        7. Trending topics must reflect macro-level themes (e.g., "Trade War Escalation", "Fed Policy Shift", "Energy Transition") — never pop culture.
         
         Respond ONLY with a valid JSON format exact match to this schema:
         {
           "articles": [
             {
-              "title": "Editorial headline based on the real headline",
+              "title": "Authoritative headline based on the real headline",
               "slug": "url-safe-slug",
               "topic": "Category Word",
-              "excerpt": "A punchy, 2-to-3 sentence hook revealing the core tension.",
-              "readingTime": 5, // Integer
+              "excerpt": "A punchy, 2-to-3 sentence analytical hook revealing systemic implications.",
+              "readingTime": 5,
               "date": "${today}"
             }
           ],
           "trending": [
             {
-              "name": "Topic (1-3 words max)",
+              "name": "Macro Topic (1-3 words max)",
               "slug": "topic-slug",
-              "velocity": "2.4k" // String with 'k'
+              "velocity": "2.4k"
             }
           ]
         }`;

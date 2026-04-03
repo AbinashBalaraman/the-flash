@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DailyAI — AI-Native Newsroom</title>
-  <meta name="description" content="An autonomous AI newsroom covering culture and trends. Deep, investigative-quality journalism powered by artificial intelligence." />
+  <title>DailyAI | Autonomous Investigative Newsroom</title>
+  <meta name="description" content="DailyAI is a fully autonomous AI-driven editorial pipeline that sources, verifies, analyzes, and publishes investigative-grade reporting — with zero human editors in the loop." />
   <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 
   <!-- Fonts: Instrument Serif for headlines, Plus Jakarta Sans for body -->
@@ -33,6 +33,7 @@
       <nav class="masthead__nav" id="main-nav">
         <a href="#/" class="nav-link active" data-page="feed">Feed</a>
         <a href="#/digest" class="nav-link" data-page="digest">Digest</a>
+        <a href="#/about" class="nav-link" data-page="about">How It Works</a>
       </nav>
       <div class="masthead__actions">
         <button class="theme-toggle" id="theme-toggle" aria-label="Toggle Theme" style="background: none; border: none; color: var(--text-muted); cursor: pointer; padding: var(--space-1); display: flex; align-items: center; justify-content: center; margin-right: var(--space-2);">
@@ -59,7 +60,7 @@
         </button>
 
         <div class="masthead__badge">
-          <span class="badge badge--ai">AI-Native</span>
+          <span class="badge badge--ai">Zero-Human Editorial</span>
         </div>
       </div>
     </div>
@@ -75,8 +76,8 @@
       <div class="feed-layout">
         <div class="feed-content">
           <div class="feed-header">
-            <h1 class="feed-header__title">Latest Intelligence</h1>
-            <p class="feed-header__subtitle">Autonomous AI reporting on culture, trends, and the stories that matter</p>
+            <h1 class="feed-header__title">Investigative Briefing</h1>
+            <p class="feed-header__subtitle">Autonomous AI-driven reporting on geopolitics, global markets, and systemic events — zero human editors in the loop</p>
           </div>
           <div id="article-grid" class="article-grid">
             <!-- Article cards inserted via JS -->
@@ -106,29 +107,35 @@
             </div>
           </div>
           <div class="sidebar-section">
-            <h3 class="sidebar-title">Pipeline Status</h3>
+            <h3 class="sidebar-title">AI Editorial Pipeline</h3>
             <div class="pipeline-status" id="pipeline-status">
               <div class="pipeline-step">
-                <span class="pipeline-icon">🔍</span>
-                <span class="pipeline-label">Discovery</span>
+                <span class="pipeline-icon">📡</span>
+                <span class="pipeline-label">Source Discovery</span>
+                <span class="pipeline-state state--active">Live</span>
+              </div>
+              <div class="pipeline-step">
+                <span class="pipeline-icon">✅</span>
+                <span class="pipeline-label">Fact Verification</span>
                 <span class="pipeline-state state--active">Active</span>
               </div>
               <div class="pipeline-step">
                 <span class="pipeline-icon">🧠</span>
-                <span class="pipeline-label">Analysis</span>
+                <span class="pipeline-label">Deep Analysis</span>
                 <span class="pipeline-state state--active">Active</span>
               </div>
               <div class="pipeline-step">
                 <span class="pipeline-icon">✍️</span>
-                <span class="pipeline-label">Writing</span>
+                <span class="pipeline-label">AI Writing</span>
                 <span class="pipeline-state state--ready">Ready</span>
               </div>
               <div class="pipeline-step">
-                <span class="pipeline-icon">📡</span>
-                <span class="pipeline-label">Publishing</span>
+                <span class="pipeline-icon">🚀</span>
+                <span class="pipeline-label">Auto-Publishing</span>
                 <span class="pipeline-state state--ready">Ready</span>
               </div>
             </div>
+            <p style="font-size: 11px; color: var(--text-ghost); margin-top: var(--space-3); line-height: 1.5; font-family: var(--font-mono);">No human editors. Every article is sourced, verified, written, and published by AI autonomously.</p>
           </div>
         </aside>
       </div>
@@ -166,8 +173,8 @@
     <section id="page-digest" class="page page--digest">
       <div class="digest-layout">
         <div class="digest-header">
-          <h1 class="digest-title">Daily Digest</h1>
-          <p class="digest-subtitle">Today's top stories, summarized in 60 seconds</p>
+          <h1 class="digest-title">Global Intelligence Brief</h1>
+          <p class="digest-subtitle">AI-synthesized executive summary of critical geopolitical and macroeconomic developments</p>
           <div class="digest-meta" id="digest-meta">
             <span class="digest-date" id="digest-date"></span>
             <span class="digest-reading-time">~1 min read</span>
@@ -185,6 +192,107 @@
       </div>
     </section>
 
+    <!-- ═══════════════════════════════════════════ -->
+    <!-- ABOUT / HOW IT WORKS PAGE                   -->
+    <!-- ═══════════════════════════════════════════ -->
+    <section id="page-about" class="page page--about">
+      <div class="about-layout">
+        <div class="about-header">
+          <h1 class="about-title">The AI-Driven Editorial Process</h1>
+          <p class="about-subtitle">DailyAI operates a fully autonomous reporting pipeline that replaces every stage of traditional human journalism with AI agents. From source discovery to final publication, no human editor is involved.</p>
+        </div>
+
+        <div class="about-pipeline">
+          <div class="pipeline-card">
+            <div class="pipeline-card__number">01</div>
+            <div class="pipeline-card__icon">📡</div>
+            <h3 class="pipeline-card__title">Autonomous Source Discovery</h3>
+            <p class="pipeline-card__desc">The AI continuously monitors real-time news feeds from multiple wire services, financial data providers, and geopolitical intelligence sources. It identifies stories with the highest editorial significance using signal-to-noise ranking algorithms — a task traditionally performed by assignment editors.</p>
+          </div>
+
+          <div class="pipeline-card">
+            <div class="pipeline-card__number">02</div>
+            <div class="pipeline-card__icon">✅</div>
+            <h3 class="pipeline-card__title">Cross-Source Fact Verification</h3>
+            <p class="pipeline-card__desc">Every raw headline is cross-referenced against multiple independent sources before entering the editorial pipeline. The AI filters out unverified claims, clickbait, and duplicate coverage — replacing the role of a fact-checking desk entirely.</p>
+          </div>
+
+          <div class="pipeline-card">
+            <div class="pipeline-card__number">03</div>
+            <div class="pipeline-card__icon">🧠</div>
+            <h3 class="pipeline-card__title">Deep Analytical Synthesis</h3>
+            <p class="pipeline-card__desc">A 253-billion parameter large language model (NVIDIA Nemotron Ultra) performs deep contextual analysis on verified stories. It identifies systemic patterns, causal relationships, and strategic implications — functioning as the investigative analysis team that no traditional newsroom can scale.</p>
+          </div>
+
+          <div class="pipeline-card">
+            <div class="pipeline-card__number">04</div>
+            <div class="pipeline-card__icon">✍️</div>
+            <h3 class="pipeline-card__title">AI-Authored Long-Form Reporting</h3>
+            <p class="pipeline-card__desc">Each article is authored end-to-end by the AI using journalistic standards calibrated to Reuters and Bloomberg quality. The system enforces active voice, varied sentence rhythm, evidence-based claims, and strict anti-cliché filters. This replaces the staff writer, copy editor, and section editor roles simultaneously.</p>
+          </div>
+
+          <div class="pipeline-card">
+            <div class="pipeline-card__number">05</div>
+            <div class="pipeline-card__icon">🚀</div>
+            <h3 class="pipeline-card__title">Automated Publishing & Distribution</h3>
+            <p class="pipeline-card__desc">Finished articles are automatically formatted, cached in a persistent store, and published to the live platform without any human review gate. The system autonomously manages content freshness, generates executive digests, and pre-loads deep-dive coverage — replacing the managing editor and production team.</p>
+          </div>
+        </div>
+
+        <div class="about-methodology">
+          <h2 class="about-section-title">Editorial Methodology</h2>
+          <div class="methodology-grid">
+            <div class="methodology-item">
+              <h4>Real Reporting Pipeline</h4>
+              <p>DailyAI ingests live wire data from real news APIs (multi-source, multi-category), processes it through AI agents, and produces original long-form analysis. This is not aggregation — every published article is an original AI-authored piece.</p>
+            </div>
+            <div class="methodology-item">
+              <h4>Zero Human Involvement</h4>
+              <p>The entire editorial workflow — from story selection through publication — operates autonomously. No human writes, edits, reviews, or approves content before it goes live. The AI is the entire editorial staff.</p>
+            </div>
+            <div class="methodology-item">
+              <h4>Investigative Focus</h4>
+              <p>Content coverage targets geopolitics, macroeconomics, technology policy, scientific breakthroughs, and systemic global events. Culture and trends are explicitly deprioritized in favor of substantive, analytical reporting.</p>
+            </div>
+            <div class="methodology-item">
+              <h4>Interactive Verification Layer</h4>
+              <p>Readers can interrogate any article through an AI-powered Q&A panel. The system answers follow-up questions grounded in the article's source context, providing a transparent verification mechanism typically absent from automated news.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="about-stack">
+          <h2 class="about-section-title">Technical Architecture</h2>
+          <div class="stack-items">
+            <div class="stack-item">
+              <span class="stack-item__label">AI Engine</span>
+              <span class="stack-item__value">NVIDIA NIM — Nemotron Ultra 253B</span>
+            </div>
+            <div class="stack-item">
+              <span class="stack-item__label">Fast Inference</span>
+              <span class="stack-item__value">Llama 3.1 70B (real-time Q&A / Chat)</span>
+            </div>
+            <div class="stack-item">
+              <span class="stack-item__label">Data Sources</span>
+              <span class="stack-item__value">Multi-API Wire Integration (live headlines)</span>
+            </div>
+            <div class="stack-item">
+              <span class="stack-item__label">Backend</span>
+              <span class="stack-item__value">Netlify Edge Functions + Blob Store</span>
+            </div>
+            <div class="stack-item">
+              <span class="stack-item__label">Frontend</span>
+              <span class="stack-item__value">Vite SPA + Custom Design System</span>
+            </div>
+            <div class="stack-item">
+              <span class="stack-item__label">Architecture</span>
+              <span class="stack-item__value">Async Pre-Generation → Instant UI Load</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <!-- ═══════════════════════════════════════════ -->
@@ -195,19 +303,19 @@
       <div class="chat-header">
         <h3 class="chat-header__title">
           <span class="chat-header__icon">◆</span>
-          Signal AI
+          Bureau Chief
         </h3>
         <button class="chat-close" id="chat-close" aria-label="Close chat">✕</button>
       </div>
       <div class="chat-messages" id="chat-messages">
         <div class="chat-message chat-message--ai">
           <div class="chat-message__content">
-            <p>I'm Signal AI — your conversational window into today's culture and trends. Ask me anything: <em>"What's happening in gaming?"</em>, <em>"Why is everyone talking about AI art?"</em>, or <em>"Give me the biggest story today."</em></p>
+            <p>I am DailyAI's Senior Editorial Bureau. Query me for deep-dive analysis on geopolitical shifts, macroeconomic data, or global crises. I operate autonomously — no human editors are involved in my responses.</p>
           </div>
         </div>
       </div>
       <form class="chat-input-form" id="chat-form">
-        <input type="text" class="chat-input" id="chat-input" placeholder="Ask about trends, culture, or today's stories..." autocomplete="off" />
+        <input type="text" class="chat-input" id="chat-input" placeholder="Query the analytical desk..." autocomplete="off" />
         <button type="submit" class="chat-submit" id="chat-submit">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="22" y1="2" x2="11" y2="13"/>

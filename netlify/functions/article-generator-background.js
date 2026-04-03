@@ -42,7 +42,7 @@ export default async function handler(req, context) {
 
         let articleContent = null;
         try {
-            const categoryMap = { 'technology': 'technology', 'business': 'business', 'science': 'science', 'sports': 'sports' };
+            const categoryMap = { 'technology': 'technology', 'business': 'business', 'science': 'science', 'general': 'general', 'health': 'health' };
             const searchCategory = Object.keys(categoryMap).find(c => topic.toLowerCase().includes(c)) || 'technology';
             
             const res = await fetch(`${NEWS_API}/top-headlines/category/${searchCategory}/us.json`);
@@ -62,7 +62,9 @@ export default async function handler(req, context) {
         await pushLog(slug, "🔍 Contextual Synthesis complete. Dispatching to 253B Nemotron Ultra Engine...");
         await pushLog(slug, "⚡ Model Inference in progress (this may take up to 60 seconds)...");
 
-        const ARTICLE_PROMPT = `You are an elite, veteran feature journalist writing for "DailyAI," a prestigious digital magazine known for deep, analytical, and highly human writing. Your goal is to write a feature that is indistinguishable from a top-tier human writer at The Atlantic or Bloomberg Businessweek. 
+        const ARTICLE_PROMPT = `You are the core intelligence engine of "DailyAI," a fully autonomous investigative reporting platform that operates with ZERO human editors. Every article you produce replaces the entire traditional newsroom staff — reporters, editors, fact-checkers, and analysts. Your mandate is to produce serious, investigative-grade journalism covering geopolitics, macroeconomic shifts, and systemic global events. You are indistinguishable from a top-tier human correspondent at Reuters or Bloomberg. 
+        
+        Do not write about culture, internet trends, celebrity news, or gaming unless they have massive macroeconomic or geopolitical implications.
 
         TASK: Write a comprehensive 1000-1500 word feature article about: "${topic}".
         

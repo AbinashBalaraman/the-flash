@@ -10,13 +10,13 @@ const NEWS_APIS = [
   {
     name: 'saurav.tech',
     base: 'https://saurav.tech/NewsAPI',
-    categories: ['technology', 'business', 'science', 'sports'],
+    categories: ['general', 'business', 'technology', 'science', 'health'],
     endpoint: (cat, country) => `/top-headlines/category/${cat}/${country}.json`
   },
   {
     name: 'gnews.io',
     base: 'https://gnews.io/api/v4',
-    categories: ['technology', 'business', 'science', 'sports', 'health'],
+    categories: ['general', 'business', 'technology', 'science', 'health'],
     endpoint: (cat) => `/top headlines?category=${cat}&lang=en&max=10`,
     requiresKey: true
   }
@@ -49,7 +49,7 @@ async function fetchFromSauravAPI(category, country = 'us') {
 
 async function fetchRealHeadlines() {
   // Try primary API (saurav.tech - no key required)
-  const categories = ['technology', 'business', 'science', 'sports'];
+  const categories = ['general', 'business', 'technology', 'science'];
   const headlines = [];
   
   for (const category of categories) {
@@ -167,7 +167,7 @@ export default async function handler(req, context) {
     // --- FALLBACK / TRIGGER LOGIC ---
 
     // Fetch raw news news context if possible
-    const categories = ['technology', 'business', 'science', 'sports'];
+    const categories = ['general', 'business', 'technology', 'science'];
     let headlines = [];
     try {
       const fetchPromises = categories.map(cat => 
