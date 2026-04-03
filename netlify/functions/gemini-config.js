@@ -5,21 +5,28 @@
 
 const NVIDIA_KEY = process.env.NVIDIA_API_KEY;
 const NVIDIA_BASE = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
-const DEFAULT_MODEL = 'nvidia/llama-3.1-nemotron-ultra-253b-v1';
+const DEFAULT_MODEL = 'meta/llama-3.1-70b-instruct';
+const BACKGROUND_MODEL = 'nvidia/llama-3.1-nemotron-ultra-253b-v1';
 
 /**
  * SHIM: Mimics the GoogleGenerativeAI SDK but uses NVIDIA NIMs
  */
 class NVIDIAConfigShim {
     getGenerativeModel({ model: modelName, systemInstruction, generationConfig, isBackground = false }) {
-        // User preference: 253B is primary for chat/ai, 70B is secondary
-        const effectiveModel = isBackground ? DEFAULT_MODEL : (modelName || 'nvidia/llama-3.1-nemotron-ultra-253b-v1');
+        const effectiveModel = isBackground ? BACKGROUND_MODEL : (modelName || DEFAULT_MODEL);
 
         return {
             generateContent: async (promptData) => {
+                const NVIDIA_KEY = process.env.NVIDIA_API_KEY;
+                const NVIDIA_BASE = process.env.NVIDIA_BASE_URL || 'https://integrate.api.nvidia.com/v1';
+
+                if (!NVIDIA_KEY) {
+                    console.error("[🔴 ERROR] NVIDIA_API_KEY is missing from environment.");
+                    throw new Error("Configuration Error: API Key missing.");
+                }
+
                 let messages = [];
 
-                // Handle System Instruction (Gemini style)
                 if (systemInstruction) {
                     if (typeof systemInstruction === 'string') {
                         messages.push({ role: 'system', content: systemInstruction });
@@ -28,7 +35,6 @@ class NVIDIAConfigShim {
                     }
                 }
 
-                // Handle prompt data
                 if (typeof promptData === 'string') {
                     messages.push({ role: 'user', content: promptData });
                 } else if (promptData?.contents) {
@@ -40,16 +46,13 @@ class NVIDIAConfigShim {
                     });
                 }
 
-                // Define models priority (User: 253B Primary, 70B Secondary)
                 const FALLBACK_MODELS = [
-                    'nvidia/llama-3.1-nemotron-ultra-253b-v1', // Global Primary
-                    'meta/llama-3.1-70b-instruct',               // High-Speed Secondary
-                    'meta/llama-3.1-8b-instruct'                 // Emergency Fallback
+                    'meta/llama-3.1-70b-instruct',
+                    'meta/llama-3.1-70b-instruct',
+                    'meta/llama-3.1-8b-instruct'
                 ];
                 
-                // If a specific model was requested by caller (e.g. for background), prepend it
                 const uniqueModels = [...new Set([effectiveModel, ...FALLBACK_MODELS])];
-
                 let lastError = null;
 
                 for (const modelId of uniqueModels) {
@@ -61,8 +64,7 @@ class NVIDIAConfigShim {
                         max_tokens: generationConfig?.maxOutputTokens ?? 4096,
                     };
 
-                    console.log(`[NVIDIA] → ${modelId} | ${messages.length} msgs | ${new Date().toISOString()}`);
-
+                    console.log(`[🚀 NIM-GATEWAY-V3 REQUEST] Model: ${modelId} | ${messages.length} msgs`);
                     try {
                         const response = await fetch(`${NVIDIA_BASE}/chat/completions`, {
                             method: 'POST',
@@ -71,33 +73,36 @@ class NVIDIAConfigShim {
                                 'Authorization': `Bearer ${NVIDIA_KEY}`,
                             },
                             body: JSON.stringify(body),
-                            signal: AbortSignal.timeout(isBackground ? 900000 : 9900), // Max for Netlify (10s sync / 15m background)
+                            signal: AbortSignal.timeout(isBackground ? 900000 : 30000), 
                         });
 
                         if (!response.ok) {
                             const errText = await response.text().catch(() => '');
-                            console.error(`[🔴 NVIDIA ERROR] ${response.status} ${response.statusText} on ${modelId}`);
-                            console.error(`[🔴 RESPONSE BODY] ${errText}`);
-                            
-                            lastError = new Error(`NVIDIA API ${response.status} (${response.statusText}): ${errText || 'No response body'}`);
-                            continue; // Try next model
+                            console.error(`[🔴 NVIDIA FAIL] ${modelId} status ${response.status}: ${errText}`);
+                            lastError = new Error(`NVIDIA API Error (${response.status}) on ${modelId}`);
+                            continue;
                         }
 
                         const result = await response.json();
-                        const content = result.choices[0].message.content;
+                        const content = result.choices?.[0]?.message?.content;
+                        
+                        if (!content) {
+                            console.warn(`[⚠️ NIM-GATEWAY-V3 EMPTY] No content in choices[0]`);
+                        }
+
+                        console.log(`[✅ NIM-GATEWAY-V3 SUCCESS] Received response from ${modelId}`);
+                        
                         return {
-                            response: { text: () => content }
+                            response: { text: () => content || "" }
                         };
                     } catch (err) {
-                        console.warn(`[NVIDIA] FETCH ERROR on ${modelId}: ${err.message}. Trying next model...`);
+                        console.error(`[⚠️ NVIDIA EXCEPTION] ${modelId}: ${err.message}`);
                         lastError = err;
-                        continue; // Try next model
+                        continue;
                     }
                 }
 
-                // If we exhausted all the models
-                console.error(`[NVIDIA] CRITICAL: All models in fallback chain failed.`);
-                throw lastError;
+                throw lastError || new Error("All AI models failed to respond.");
             }
         };
     }
